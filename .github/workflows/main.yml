@@ -93,7 +93,7 @@ jobs:
         name: LuCI Apps Build – ${{ github.event.inputs.firmware_version }}
         body: |
           ✅ Build for target: `${{ github.event.inputs.target }}`
-          📦 Firmware version: `${{ github.event.inputs.firmware_version}`
+          📦 Firmware version: `${{ github.event.inputs.firmware_version }}`
           🚀 Includes all luci-app-* IPKs from the repo.
         files: firmware/*.ipk
       env:
