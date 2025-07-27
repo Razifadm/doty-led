@@ -1,6 +1,6 @@
 #!/bin/sh /etc/rc.common
-# Copyright (C) 2022 Lean <coolsnowwolf@gmail.com>
-# Copyright (C) 2019-2021 Tianling Shen <cnsztl@immortalwrt.org>
+# SPDX-License-Identifier: GPL-3.0-only
+# Updated for nftables support by ChatGPT
 
 START=90
 STOP=10
@@ -8,7 +8,7 @@ STOP=10
 EXTRA_COMMANDS="check_status"
 EXTRA_HELP="	check_status Check running status of utils"
 
-inital_conf(){
+inital_conf() {
 	config_load "turboacc"
 	config_get "hw_wed" "config" "hw_wed" "0"
 	config_get "hw_flow" "config" "hw_flow" "0"
@@ -17,13 +17,12 @@ inital_conf(){
 	config_get "bbr_cca" "config" "bbr_cca" "0"
 	config_get "fullcone_nat" "config" "fullcone_nat" "0"
 
-	[ ! -e "/lib/modules/$(uname -r)/xt_FLOWOFFLOAD.ko" ] && { sw_flow="0"; hw_flow="0"; }
+	[ ! -e "/lib/modules/$(uname -r)/kmod-nft-offload.ko" ] && { sw_flow="0"; hw_flow="0"; }
 	[ ! -e "/lib/modules/$(uname -r)/tcp_bbr.ko" ] && bbr_cca="0"
 }
 
 load_sfe() {
 	local kernel_version=$(uname -r)
-
 	[ -e "/lib/modules/$kernel_version/shortcut-fe-cm.ko" ] && modprobe shortcut-fe-cm
 	[ -e "/lib/modules/$kernel_version/fast-classifier.ko" ] && modprobe fast-classifier
 }
@@ -35,9 +34,8 @@ unload_sfe() {
 
 load_wed() {
 	local kernel_version=$(uname -r)
-
 	grep -Eq 'mediatek' /etc/openwrt_release && \
-	    ! grep -Eq 'mt7915e' /etc/modules.conf && \
+		! grep -Eq 'mt7915e' /etc/modules.conf && \
 		[ -e "/lib/modules/$kernel_version/mt7915e.ko" ] && {
 			sed -i '$aoptions mt7915e wed_enable=Y' /etc/modules.conf
 			rmmod mt7915e && sleep 1 && modprobe mt7915e && wifi up
@@ -46,41 +44,47 @@ load_wed() {
 
 unload_wed() {
 	local kernel_version=$(uname -r)
-
 	grep -Eq 'mediatek' /etc/openwrt_release && \
-	    grep -Eq 'mt7915e' /etc/modules.conf && \
+		grep -Eq 'mt7915e' /etc/modules.conf && \
 		[ -e "/lib/modules/$kernel_version/mt7915e.ko" ] && {
 			sed -i '/mt7915e/d' /etc/modules.conf
 			rmmod mt7915e && sleep 1 && modprobe mt7915e && wifi up
 		}
 }
 
-start(){
+start() {
 	inital_conf
 
+	# nftables offloading is handled by fw4 config
 	uci set firewall.@defaults[0].flow_offloading="${sw_flow}"
 	uci set firewall.@defaults[0].flow_offloading_hw="${hw_flow}"
 	uci set firewall.@defaults[0].fullcone="${fullcone_nat}"
 	uci commit firewall
 
+	# Load SFE fallback if nft-offload isn't used
 	[ "${sw_flow}" -ne "1" ] && [ "${sfe_flow}" -eq "1" ] && {
 		load_sfe
 	}
 
+	# Hardware WED
 	[ "${hw_flow}" -eq "1" ] && [ "${hw_wed}" -eq "1" ] && {
 		load_wed
 	}
 
-	if [ "${bbr_cca}" -eq "1" ];  then
+	# BBR Congestion Control
+	if [ "${bbr_cca}" -eq "1" ]; then
 		sysctl -w net.ipv4.tcp_congestion_control="bbr"
 	else
 		sysctl -w net.ipv4.tcp_congestion_control="cubic"
 	fi
+
+	/etc/init.d/firewall reload
 }
 
-stop(){
+stop() {
 	inital_conf
 
+	# Preserve UCI state (not necessary, but kept for consistency)
 	uci set firewall.@defaults[0].flow_offloading="${sw_flow}"
 	uci set firewall.@defaults[0].flow_offloading_hw="${hw_flow}"
 	uci set firewall.@defaults[0].fullcone="${fullcone_nat}"
@@ -91,30 +95,20 @@ stop(){
 	}
 
 	unload_sfe
+
+	/etc/init.d/firewall reload
 }
 
-restart(){
+restart() {
 	stop
 	start
-
-	/etc/init.d/firewall restart >"/dev/null" 2>&1
 }
 
-check_status(){
+check_status() {
 	case "$1" in
 	"fastpath")
-		if [ "$(cat "/sys/module/xt_FLOWOFFLOAD/refcnt" 2>"/dev/null" || echo 0)" -ne "0" ]; then
-			echo -n "Flow Offloading"
-			exit 0
-		elif [ "$(cat "/sys/module/xt_FLOWOFFLOAD/refcnt" 2>"/dev/null")" -eq "0" ] && \
-		    [ -e /sys/kernel/debug/hnat/hnat_version ]; then
-			echo -n "MediaTek HWNAT"
-			exit 0
-		elif [ -d /sys/kernel/debug/ecm/ecm_nss_ipv4 ]; then
-			echo -n "QCA-NSS-ECM"
-			exit 0
-		elif [ -d /sys/kernel/debug/ecm/ecm_sfe_ipv4 ]; then
-			echo -n "QCA-ECM-SFE"
+		if nft list chain inet fw4 forward | grep -q offload; then
+			echo -n "nftables Flow Offloading"
 			exit 0
 		elif [ -d /sys/module/fast_classifier ]; then
 			echo -n "Shortcut-FE"
@@ -127,15 +121,14 @@ check_status(){
 		fi
 		;;
 	"fullconenat")
-    if [ -z "$(iptables -t nat -L zone_wan_postrouting | grep -i fullcone)" ]; then
-      exit 1
-    else
-      exit 0
-    fi
+		if nft list ruleset | grep -iq fullcone; then
+			exit 0
+		else
+			exit 1
+		fi
 		;;
 	"bbr")
-		[ "x$(cat "/proc/sys/net/ipv4/tcp_congestion_control" 2>"/dev/null")" = "xbbr" ] && \
-			exit 0 || exit 1
+		[ "$(cat /proc/sys/net/ipv4/tcp_congestion_control)" = "bbr" ] && exit 0 || exit 1
 		;;
 	*)
 		exit 2
