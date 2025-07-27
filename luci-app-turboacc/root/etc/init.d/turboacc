@@ -1,6 +1,6 @@
 #!/bin/sh /etc/rc.common
 # SPDX-License-Identifier: GPL-3.0-only
-# Updated for nftables support by ChatGPT
+# Updated for nftables
 
 START=90
 STOP=10
