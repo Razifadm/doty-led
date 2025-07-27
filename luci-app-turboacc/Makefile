@@ -29,15 +29,15 @@ LUCI_PKGARCH:=all
 define Package/$(PKG_NAME)/config
 config PACKAGE_$(PKG_NAME)_INCLUDE_OFFLOADING
 	bool "Include Flow Offload"
-	default y if !(TARGET_ipq60xx||TARGET_ipq806x||TARGET_ipq807x||TARGET_qualcommax)
+	default n
 
 config PACKAGE_$(PKG_NAME)_INCLUDE_BBR_CCA
 	bool "Include BBR CCA"
-	default y
+	default n
 
 config PACKAGE_$(PKG_NAME)_INCLUDE_NFT_FULLCONE
 	bool "Include NFT FULLCONE"
-	default y
+	default n
 endef
 
 include $(TOPDIR)/feeds/luci/luci.mk
