@@ -25,6 +25,9 @@ jobs:
 
       - name: Clone OpenClash repo (shallow)
         run: git clone --depth=1 https://github.com/vernesong/OpenClash.git openclash
+        
+      - name: Update Pakages (shallow)
+        run: git clone https://github.com/xiaorouji/openwrt-passwall-packages.git packages
 
       - name: Create or switch to 'luci_app' branch
         run: |
@@ -41,8 +44,12 @@ jobs:
           rm -rf luci-app-openclash
           cp -r openclash/luci-app-openclash ./luci-app-openclash
 
+      - name: Copy Passwall Packages
+        run: |
+          cp -rf packages/* ./
+
       - name: Commit and push to luci_app
         run: |
-          git add luci-app-passwall2 luci-app-openclash
-          git commit -m "Update luci-app-passwall2 and luci-app-openclash" || echo "No changes to commit"
+          git add .
+          git commit -m "Auto update" || echo "No changes to commit"
           git push origin luci_app
