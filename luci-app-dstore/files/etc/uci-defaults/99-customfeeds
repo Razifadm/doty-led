@@ -1,24 +1,14 @@
 #!/bin/sh
 
-FEED_NAME="dotywrt"
-FEED_URL="https://dotywrt.github.io/24.10.2/v3.1-nss/packages"
-FEED_LINE="src/gz $FEED_NAME $FEED_URL"
-FEED_FILE="/etc/opkg/customfeeds.conf"
+cat <<EOF >> /etc/opkg/customfeeds.conf
+src/gz dotywrt https://dotywrt.github.io/24.10.2/v3.1-nss/packages
+src/gz passwall2 https://master.dl.sourceforge.net/project/openwrt-passwall-build/releases/packages-24.10/aarch64_cortex-a53/passwall2
+src/gz passwall_luci https://master.dl.sourceforge.net/project/openwrt-passwall-build/releases/packages-24.10/aarch64_cortex-a53/passwall_luci
+src/gz passwall_packages https://master.dl.sourceforge.net/project/openwrt-passwall-build/releases/packages-24.10/aarch64_cortex-a53/passwall_packages
+EOF
 
-# Pastikan fail feed wujud
-touch "$FEED_FILE"
+wget -q -O /tmp/passwall.pub https://master.dl.sourceforge.net/project/openwrt-passwall-build/passwall.pub
+[ -f /tmp/passwall.pub ] && opkg-key add /tmp/passwall.pub && rm -f /tmp/passwall.pub
 
-# Tambah baris feed jika belum ada
-grep -qF "$FEED_LINE" "$FEED_FILE" || echo "$FEED_LINE" >> "$FEED_FILE"
-
-# Muat turun dan tambah kunci GPG
-wget -q -O /tmp/passwall.pub "${FEED_URL}/passwall.pub"
-if [ -f /tmp/passwall.pub ]; then
-    opkg-key add /tmp/passwall.pub
-    rm -f /tmp/passwall.pub
-fi
-
-# Padam skrip ini sendiri selepas selesai
 rm -f "$0"
-
 exit 0
