@@ -12,3 +12,4 @@ wget -q -O /tmp/passwall.pub https://master.dl.sourceforge.net/project/openwrt-p
 
 rm -f "$0"
 exit 0
+
