@@ -56,7 +56,7 @@ function action_app_manage()
         local file_stat = nixio.fs.stat(tmp_path)
         if file_stat and file_stat.size > 0 then
             luci.http.write("\nUpdating package list...\n")
-            luci.http.write(luci.sys.exec("opkg update 2>&1"))
+            luci.sys.exec("opkg update >/dev/null 2>&1")
             luci.http.write("\nInstalling package...\n")
             luci.http.write(luci.sys.exec("opkg install " .. tmp_path .. " 2>&1"))
             luci.sys.exec("rm -f " .. tmp_path)
