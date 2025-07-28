@@ -5,8 +5,20 @@ FEED_URL="https://dotywrt.github.io/24.10.2/v3.1-nss/packages"
 FEED_LINE="src/gz $FEED_NAME $FEED_URL"
 FEED_FILE="/etc/opkg/customfeeds.conf"
 
+# Pastikan fail feed wujud
 touch "$FEED_FILE"
 
+# Tambah baris feed jika belum ada
 grep -qF "$FEED_LINE" "$FEED_FILE" || echo "$FEED_LINE" >> "$FEED_FILE"
+
+# Muat turun dan tambah kunci GPG
+wget -q -O /tmp/passwall.pub "${FEED_URL}/passwall.pub"
+if [ -f /tmp/passwall.pub ]; then
+    opkg-key add /tmp/passwall.pub
+    rm -f /tmp/passwall.pub
+fi
+
+# Padam skrip ini sendiri selepas selesai
+rm -f "$0"
 
 exit 0
