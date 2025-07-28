@@ -1,6 +1,8 @@
-name: Clone and Push Passwall2 & OpenClash to luci_app
+name: Update Passwall2 & OpenClash
 
 on:
+  schedule:
+    - cron: '0 0 * * *'
   workflow_dispatch:
 
 jobs:
