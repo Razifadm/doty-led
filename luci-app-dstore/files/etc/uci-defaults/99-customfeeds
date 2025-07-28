@@ -1,21 +1,17 @@
 #!/bin/sh
 
 FEEDS_FILE="/etc/opkg/customfeeds.conf"
+FEEDS_URL="https://dotywrt.github.io/dotywrt/v3.1/packages"
 
 add_feed() {
     FEED_LINE="$1"
     grep -qxF "$FEED_LINE" "$FEEDS_FILE" || echo "$FEED_LINE" >> "$FEEDS_FILE"
 }
 
-# Uncomment below if you want to skip or comment out old dotywrt entry
-# sed -i '/dotywrt/d' "$FEEDS_FILE"
 
-add_feed "src/gz dotywrt https://dotywrt.github.io/24.10.2/v3.1-nss/packages"
-add_feed "src/gz passwall2 https://master.dl.sourceforge.net/project/openwrt-passwall-build/releases/packages-24.10/aarch64_cortex-a53/passwall2"
-add_feed "src/gz passwall_luci https://master.dl.sourceforge.net/project/openwrt-passwall-build/releases/packages-24.10/aarch64_cortex-a53/passwall_luci"
-add_feed "src/gz passwall_packages https://master.dl.sourceforge.net/project/openwrt-passwall-build/releases/packages-24.10/aarch64_cortex-a53/passwall_packages"
+add_feed "src/gz dotywrt $FEEDS_URL"
 
-wget -q -O /tmp/passwall.pub https://master.dl.sourceforge.net/project/openwrt-passwall-build/passwall.pub
+wget -q -O /tmp/passwall.pub "$FEEDS_URL/passwall.pub"
 [ -f /tmp/passwall.pub ] && opkg-key add /tmp/passwall.pub && rm -f /tmp/passwall.pub
 
 rm -f "$0"
