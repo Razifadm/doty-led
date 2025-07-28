@@ -48,6 +48,9 @@ jobs:
         run: |
           cp -rf packages/* ./
 
+      - name: Cleanup
+        run: rm -rf passwall2 packages openclash
+
       - name: Commit and push to luci_app
         run: |
           git add .
