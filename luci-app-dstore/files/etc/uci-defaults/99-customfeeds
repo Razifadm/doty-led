@@ -11,8 +11,8 @@ add_feed() {
 
 add_feed "src/gz dotywrt $FEEDS_URL"
 
-wget -q -O /tmp/passwall.pub "$FEEDS_URL/passwall.pub"
-[ -f /tmp/passwall.pub ] && opkg-key add /tmp/passwall.pub && rm -f /tmp/passwall.pub
+wget -q -O /tmp/key-build.pub "$FEEDS_URL/key-build.pub"
+[ -f /tmp/key-build.pub ] && opkg-key add /tmp/key-build.pub && rm -f /tmp/key-build.pub
 
 rm -f "$0"
 exit 0
