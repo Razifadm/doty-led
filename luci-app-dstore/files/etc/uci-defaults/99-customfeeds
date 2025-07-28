@@ -1,7 +1,7 @@
 #!/bin/sh
 
 cat <<EOF >> /etc/opkg/customfeeds.conf
-src/gz dotywrt https://dotywrt.github.io/24.10.2/v3.1-nss/packages
+# src/gz dotywrt https://dotywrt.github.io/24.10.2/v3.1-nss/packages
 src/gz passwall2 https://master.dl.sourceforge.net/project/openwrt-passwall-build/releases/packages-24.10/aarch64_cortex-a53/passwall2
 src/gz passwall_luci https://master.dl.sourceforge.net/project/openwrt-passwall-build/releases/packages-24.10/aarch64_cortex-a53/passwall_luci
 src/gz passwall_packages https://master.dl.sourceforge.net/project/openwrt-passwall-build/releases/packages-24.10/aarch64_cortex-a53/passwall_packages
