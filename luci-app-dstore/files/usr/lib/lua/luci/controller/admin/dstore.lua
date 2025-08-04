@@ -1,17 +1,17 @@
-module("luci.controller.admin.dstor", package.seeall)
+module("luci.controller.admin.dstore", package.seeall)
 
 function index()
     entry({"admin", "tools"}, firstchild(), _("Tools"), 50).dependent = false
-    entry({"admin", "tools", "dstor"}, firstchild(), _("DStore"), 10).dependent = false
-    entry({"admin", "tools", "dstor", "all"}, template("dstor/all"), _("All"), 1)
-    entry({"admin", "tools", "dstor", "installed"}, template("dstor/installed"), _("Installed"), 2)
-    entry({"admin", "tools", "dstor", "not_installed"}, template("dstor/not_installed"), _("Not Installed"), 3)
-    entry({"admin", "tools", "dstor", "update"}, template("dstor/update"), _("Update"), 4)
-    entry({"admin", "tools", "dstor", "settings"}, cbi("dstor/settings"), _("Settings"), 5)
+    entry({"admin", "tools", "dstore"}, firstchild(), _("dstoree"), 10).dependent = false
+    entry({"admin", "tools", "dstore", "all"}, template("dstore/all"), _("All"), 1)
+    entry({"admin", "tools", "dstore", "installed"}, template("dstore/installed"), _("Installed"), 2)
+    entry({"admin", "tools", "dstore", "not_installed"}, template("dstore/not_installed"), _("Not Installed"), 3)
+    entry({"admin", "tools", "dstore", "update"}, template("dstore/update"), _("Update"), 4)
+    entry({"admin", "tools", "dstore", "settings"}, cbi("dstore/settings"), _("Settings"), 5)
 
     -- API
-    entry({"admin", "tools", "dstor", "api", "list"}, call("action_app_json"), nil).leaf = true
-    entry({"admin", "tools", "dstor", "api", "manage"}, call("action_app_manage"), nil).leaf = true
+    entry({"admin", "tools", "dstore", "api", "list"}, call("action_app_json"), nil).leaf = true
+    entry({"admin", "tools", "dstore", "api", "manage"}, call("action_app_manage"), nil).leaf = true
 end
 
 
@@ -82,11 +82,11 @@ function action_app_json()
     local uci = require "luci.model.uci".cursor()
     local json = require "luci.jsonc"
     local util = require "luci.util"
-    local urls = uci:get_list("dstore", "settings", "json_urls")
+    local urls = uci:get_list("dstoree", "settings", "json_urls")
 
     if not urls or #urls == 0 then
-        luci.http.status(500, "Missing JSON URLs in /etc/config/dstore")
-        luci.http.write("Error: No 'json_urls' found in /etc/config/dstore")
+        luci.http.status(500, "Missing JSON URLs in /etc/config/dstoree")
+        luci.http.write("Error: No 'json_urls' found in /etc/config/dstoree")
         return
     end
 
