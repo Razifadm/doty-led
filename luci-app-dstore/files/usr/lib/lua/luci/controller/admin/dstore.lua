@@ -2,7 +2,7 @@ module("luci.controller.admin.dstore", package.seeall)
 
 function index()
     entry({"admin", "tools"}, firstchild(), _("Tools"), 50).dependent = false
-    entry({"admin", "tools", "dstore"}, firstchild(), _("dstoree"), 10).dependent = false
+    entry({"admin", "tools", "dstore"}, firstchild(), _("dstore"), 10).dependent = false
     entry({"admin", "tools", "dstore", "all"}, template("dstore/all"), _("All"), 1)
     entry({"admin", "tools", "dstore", "installed"}, template("dstore/installed"), _("Installed"), 2)
     entry({"admin", "tools", "dstore", "not_installed"}, template("dstore/not_installed"), _("Not Installed"), 3)
@@ -82,11 +82,11 @@ function action_app_json()
     local uci = require "luci.model.uci".cursor()
     local json = require "luci.jsonc"
     local util = require "luci.util"
-    local urls = uci:get_list("dstoree", "settings", "json_urls")
+    local urls = uci:get_list("dstore", "settings", "json_urls")
 
     if not urls or #urls == 0 then
-        luci.http.status(500, "Missing JSON URLs in /etc/config/dstoree")
-        luci.http.write("Error: No 'json_urls' found in /etc/config/dstoree")
+        luci.http.status(500, "Missing JSON URLs in /etc/config/dstore")
+        luci.http.write("Error: No 'json_urls' found in /etc/config/dstore")
         return
     end
 
