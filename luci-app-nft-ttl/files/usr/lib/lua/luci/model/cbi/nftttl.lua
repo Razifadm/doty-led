@@ -17,19 +17,20 @@ val.description = translate("Set the TTL (IPv4) / HopLimit (IPv6) value. Default
     "Enabling this setting will modify all packet TTL values. " ..
     "After setting, click 'Save & Apply' — the firewall will auto-reload the rule.")
 
-
 function m.on_commit(map)
     local enabled = uci:get("nftttl", "ttl", "enabled")
     local value = uci:get("nftttl", "ttl", "value") or "64"
     local nft_dir = "/etc/nftables.d/"
     local outfile = nft_dir .. "ttl64.nft"
 
+    -- Hapus file .nft lain (kecuali ttl64.nft dan README)
     for f in fs.dir(nft_dir) do
         if f:match("%.nft$") and f ~= "ttl64.nft" and f ~= "README" then
             fs.remove(nft_dir .. f)
         end
     end
 
+    -- Tulis file nft baru
     local function write_rule()
         local f = io.open(outfile, "w")
         if not f then return end
@@ -66,14 +67,6 @@ function m.on_commit(map)
     end
 
     write_rule()
-
-    if enabled == "1" then
-        os.execute("/etc/init.d/nft-custom-ttl enable >/dev/null 2>&1")
-        os.execute("/etc/init.d/nft-custom-ttl start >/dev/null 2>&1 &")
-    else
-        os.execute("/etc/init.d/nft-custom-ttl stop >/dev/null 2>&1")
-        os.execute("/etc/init.d/nft-custom-ttl disable >/dev/null 2>&1")
-    end
 
     os.execute("sleep 1; /etc/init.d/firewall restart &")
 end
