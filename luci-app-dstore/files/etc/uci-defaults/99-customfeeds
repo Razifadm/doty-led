@@ -2,16 +2,25 @@
 
 FEEDS_FILE="/etc/opkg/customfeeds.conf"
 FEEDS_URL="https://dotywrt.github.io/dotywrt/v3.1/packages"
+FEED_NAME="dotywrt"
+KEY_FILE="/tmp/key-build.pub"
 
 add_feed() {
-    FEED_LINE="$1"
+    FEED_LINE="src/gz $FEED_NAME $FEEDS_URL"
     grep -qxF "$FEED_LINE" "$FEEDS_FILE" || echo "$FEED_LINE" >> "$FEEDS_FILE"
 }
 
+add_key() {
+    cat > "$KEY_FILE" <<EOF
+untrusted comment: Local build key
+RWTtH/w9XkdnFxLPusltDzV2G6YkQ2WSmi8hHPyJVVqCraE0NtErEjbH
+EOF
 
-add_feed "src/gz dotywrt $FEEDS_URL"
+    opkg-key add "$KEY_FILE"
+    rm -f "$KEY_FILE"
+}
 
-wget -q -O /tmp/key-build.pub "$FEEDS_URL/key-build.pub"
-[ -f /tmp/key-build.pub ] && opkg-key add /tmp/key-build.pub && rm -f /tmp/key-build.pub
+add_feed
+add_key
 
 exit 0
