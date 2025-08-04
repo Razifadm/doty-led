@@ -2,7 +2,7 @@ module("luci.controller.admin.dstore", package.seeall)
 
 function index()
     entry({"admin", "tools"}, firstchild(), _("Tools"), 50).dependent = false
-    entry({"admin", "tools", "dstore"}, firstchild(), _("dstore"), 10).dependent = false
+    entry({"admin", "tools", "dstore"}, firstchild(), _("Dstore"), 10).dependent = false
     entry({"admin", "tools", "dstore", "all"}, template("dstore/all"), _("All"), 1)
     entry({"admin", "tools", "dstore", "installed"}, template("dstore/installed"), _("Installed"), 2)
     entry({"admin", "tools", "dstore", "not_installed"}, template("dstore/not_installed"), _("Not Installed"), 3)
