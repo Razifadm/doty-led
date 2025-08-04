@@ -1,7 +1,7 @@
 #!/bin/sh
 
 FEEDS_FILE="/etc/opkg/customfeeds.conf"
-FEEDS_URL="https://dotywrt.github.io/dotywrt/v3.1/packages"
+FEEDS_URL="https://dotywrt.github.io/dotywrt/24.10.2/V3.2/packages"
 FEED_NAME="dotywrt"
 KEY_FILE="/tmp/key-build.pub"
 
