@@ -18,8 +18,8 @@
     const css = document.createElement('link');
     css.rel = 'stylesheet';
     css.href = isDarkMode()
-      ? '<%=resource%>/view/appmanager/all_dark.css'
-      : '<%=resource%>/view/appmanager/all.css';
+      ? '<%=resource%>/view/dstore/all_dark.css'
+      : '<%=resource%>/view/dstore/all.css';
     document.head.appendChild(css);
   }
 
@@ -51,7 +51,7 @@ let appList = [];
 let installedList = [];
 
 async function getInstalledPkgs() {
-  const res = await fetch('<%=luci.dispatcher.build_url("admin", "services", "appmanager", "api", "manage")%>?do=list');
+  const res = await fetch('<%=luci.dispatcher.build_url("admin", "tools", "dstore", "api", "manage")%>?do=list');
   return (await res.text()).split('\n').map(line => line.trim().split(' - ')[0]).filter(Boolean);
 }
 
@@ -60,7 +60,7 @@ async function loadApps() {
   grid.innerHTML = '<p class="cbi-value-description">Loading...</p>';
 
   try {
-    const appRes = await fetch('<%=luci.dispatcher.build_url("admin", "services", "appmanager", "api", "list")%>');
+    const appRes = await fetch('<%=luci.dispatcher.build_url("admin", "tools", "dstore", "api", "list")%>');
     appList = await appRes.json();
     installedList = await getInstalledPkgs();
     renderGrid();
@@ -117,7 +117,7 @@ function manageApp(pkg, url, action) {
   form.append('url', url);
   form.append('do', action);
 
-  fetch('<%=luci.dispatcher.build_url("admin", "services", "appmanager", "api", "manage")%>', {
+  fetch('<%=luci.dispatcher.build_url("admin", "tools", "dstore", "api", "manage")%>', {
     method: 'POST',
     body: form
   })
