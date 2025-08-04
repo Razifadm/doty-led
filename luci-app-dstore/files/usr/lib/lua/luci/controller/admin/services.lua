@@ -1,18 +1,18 @@
-module("luci.controller.admin.services", package.seeall)
+module("luci.controller.admin.tools", package.seeall)
 
 function index()
-    entry({"admin", "services", "appmanager"}, firstchild(), _("DStore"), 10).dependent = false
+    entry({"admin", "tools", "dstor"}, firstchild(), _("DStore"), 10).dependent = false
 
     -- Tab entries (reordered)
-    entry({"admin", "services", "appmanager", "all"}, template("appmanager/all"), _("All"), 1)
-    entry({"admin", "services", "appmanager", "installed"}, template("appmanager/installed"), _("Installed"), 2)
-    entry({"admin", "services", "appmanager", "not_installed"}, template("appmanager/not_installed"), _("Not Installed"), 3)
-    entry({"admin", "services", "appmanager", "update"}, template("appmanager/update"), _("Update"), 4)
-    entry({"admin", "services", "appmanager", "settings"}, cbi("appmanager/settings"), _("Settings"), 5)
+    entry({"admin", "tools", "dstor", "all"}, template("dstor/all"), _("All"), 1)
+    entry({"admin", "tools", "dstor", "installed"}, template("dstor/installed"), _("Installed"), 2)
+    entry({"admin", "tools", "dstor", "not_installed"}, template("dstor/not_installed"), _("Not Installed"), 3)
+    entry({"admin", "tools", "dstor", "update"}, template("dstor/update"), _("Update"), 4)
+    entry({"admin", "tools", "dstor", "settings"}, cbi("dstor/settings"), _("Settings"), 5)
 
     -- API endpoints
-    entry({"admin", "services", "appmanager", "api", "list"}, call("action_app_json"), nil).leaf = true
-    entry({"admin", "services", "appmanager", "api", "manage"}, call("action_app_manage"), nil).leaf = true
+    entry({"admin", "tools", "dstor", "api", "list"}, call("action_app_json"), nil).leaf = true
+    entry({"admin", "tools", "dstor", "api", "manage"}, call("action_app_manage"), nil).leaf = true
 end
 
 function action_app_manage()
