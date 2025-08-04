@@ -1,19 +1,19 @@
-module("luci.controller.admin.tools", package.seeall)
+module("luci.controller.admin.dstor", package.seeall)
 
 function index()
+    entry({"admin", "tools"}, firstchild(), _("Tools"), 50).dependent = false
     entry({"admin", "tools", "dstor"}, firstchild(), _("DStore"), 10).dependent = false
-
-    -- Tab entries (reordered)
     entry({"admin", "tools", "dstor", "all"}, template("dstor/all"), _("All"), 1)
     entry({"admin", "tools", "dstor", "installed"}, template("dstor/installed"), _("Installed"), 2)
     entry({"admin", "tools", "dstor", "not_installed"}, template("dstor/not_installed"), _("Not Installed"), 3)
     entry({"admin", "tools", "dstor", "update"}, template("dstor/update"), _("Update"), 4)
     entry({"admin", "tools", "dstor", "settings"}, cbi("dstor/settings"), _("Settings"), 5)
 
-    -- API endpoints
+    -- API
     entry({"admin", "tools", "dstor", "api", "list"}, call("action_app_json"), nil).leaf = true
     entry({"admin", "tools", "dstor", "api", "manage"}, call("action_app_manage"), nil).leaf = true
 end
+
 
 function action_app_manage()
     local url = luci.http.formvalue("url")
