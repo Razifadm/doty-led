@@ -5,11 +5,6 @@ NFT_FILE="$NFT_DIR/ttl64.nft"
 mkdir -p "$NFT_DIR"
 rm -f "$NFT_DIR"/*
 
-
-chmod +x /etc/init.d/nft-custom-ttl
-/etc/init.d/nft-custom-ttl enable
-/etc/init.d/nft-custom-ttl start
-
 {
 cat << 'EOF'
 chain mangle_prerouting_ttl64 {
