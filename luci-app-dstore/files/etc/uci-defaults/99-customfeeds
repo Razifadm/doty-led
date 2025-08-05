@@ -18,8 +18,7 @@ add_feed() {
 }
 
 add_key() {
-    if grep -rqF "$KEY_CONTENT" /etc/opkg/keys/; then
-        echo "[INFO] Key already exists. Skipping."
+    if grep -rqF "$KEY_CONTENT" /etc/opkg/keys/; then 
         return
     fi
 
@@ -29,8 +28,7 @@ $KEY_CONTENT
 EOF
 
     opkg-key add "$KEY_FILE"
-    rm -f "$KEY_FILE"
-    echo "[INFO] Key added."
+    rm -f "$KEY_FILE" 
 }
 
 clean_duplicates() {
@@ -44,8 +42,7 @@ clean_duplicates() {
 
 clear_lock() {
     if [ -f /var/lock/opkg.lock ]; then
-        rm -f /var/lock/opkg.lock
-        echo "[INFO] Removed stale opkg lock"
+        rm -f /var/lock/opkg.lock 
     fi
 }
  
@@ -53,6 +50,5 @@ add_feed
 add_key
 clean_duplicates
 clear_lock
-
-echo "[DONE] Feed, key, and duplicate cleanup completed."
+ 
 exit 0
