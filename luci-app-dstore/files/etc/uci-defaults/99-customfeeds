@@ -3,21 +3,35 @@
 FEEDS_FILE="/etc/opkg/customfeeds.conf"
 FEEDS_URL="https://dotywrt.github.io/dotywrt/24.10.2/V3.2/packages"
 FEED_NAME="dotywrt"
+KEY_CONTENT="RWTtH/w9XkdnFxLPusltDzV2G6YkQ2WSmi8hHPyJVVqCraE0NtErEjbH"
+KEY_COMMENT="untrusted comment: Local build key"
 KEY_FILE="/tmp/key-build.pub"
 
 add_feed() {
     FEED_LINE="src/gz $FEED_NAME $FEEDS_URL"
-    grep -qxF "$FEED_LINE" "$FEEDS_FILE" || echo "$FEED_LINE" >> "$FEEDS_FILE"
+    if ! grep -qF "$FEED_LINE" "$FEEDS_FILE"; then
+        echo "$FEED_LINE" >> "$FEEDS_FILE"
+        echo "Feed added: $FEED_LINE"
+    else
+        echo "Feed already exists: $FEED_LINE"
+    fi
 }
 
 add_key() {
+    # Check if key already exists in /etc/opkg/keys
+    if grep -rqF "$KEY_CONTENT" /etc/opkg/keys/; then
+        echo "Key already exists. Skipping."
+        return
+    fi
+
     cat > "$KEY_FILE" <<EOF
-untrusted comment: Local build key
-RWTtH/w9XkdnFxLPusltDzV2G6YkQ2WSmi8hHPyJVVqCraE0NtErEjbH
+$KEY_COMMENT
+$KEY_CONTENT
 EOF
 
     opkg-key add "$KEY_FILE"
     rm -f "$KEY_FILE"
+    echo "Key added."
 }
 
 add_feed
