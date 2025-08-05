@@ -1,5 +1,3 @@
-include $(TOPDIR)/rules.mk
-
 PKG_NAME:=luci-app-aw1k-led
 PKG_VERSION:=1.0
 PKG_RELEASE:=1
@@ -9,7 +7,6 @@ PKG_LICENSE:=GPL-3.0
 
 LUCI_TITLE:=AW1K LED Controller
 LUCI_DESCRIPTION:=LuCI application to configure LED behavior based on 5G signal quality.
-LUCI_DEPENDS:=+luci +luci-base
 
 PKG_BUILD_DIR := $(BUILD_DIR)/$(PKG_NAME)
 
@@ -21,7 +18,7 @@ define Package/$(PKG_NAME)
   SUBMENU:=3. Applications
   TITLE:=$(LUCI_TITLE)
   PKGARCH:=all
-  DEPENDS:=$(LUCI_DEPENDS)
+  DEPENDS:= 
 endef
 
 define Package/$(PKG_NAME)/description
@@ -29,7 +26,6 @@ define Package/$(PKG_NAME)/description
 endef
 
 define Build/Compile
-	# No build necessary for Lua-based LuCI apps
 endef
 
 define Package/$(PKG_NAME)/install
