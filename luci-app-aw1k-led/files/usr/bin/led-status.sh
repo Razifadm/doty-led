@@ -18,9 +18,9 @@ turn_off_led() {
 
 set_led_blink() {
     LED_PATH="/sys/class/leds/$1"
-    if [ -d "$LED_PATH" ]; then
+    [ -d "$LED_PATH" ] && {
         echo heartbeat > "$LED_PATH/trigger"
-    fi
+    }
 }
 
 set_5g_led_by_snr() {
@@ -54,15 +54,9 @@ set_5g_led_by_snr() {
     done
 
     case "$best_color" in
-        green)
-            turn_on_led "green:5g"
-            ;;
-        blue)
-            turn_on_led "blue:5g"
-            ;;
-        red)
-            turn_on_led "red:5g"
-            ;;
+        green) turn_on_led "green:5g" ;;
+        blue)  turn_on_led "blue:5g" ;;
+        red)   turn_on_led "red:5g" ;;
         yellow)
             turn_on_led "red:5g"
             turn_on_led "green:5g"
@@ -75,13 +69,13 @@ set_5g_led_by_snr() {
 
     if [ "$best_blink" = "1" ]; then
         case "$best_color" in
-            purple)
-                set_led_blink "red:5g"
-                set_led_blink "blue:5g"
-                ;;
             yellow)
                 set_led_blink "red:5g"
                 set_led_blink "green:5g"
+                ;;
+            purple)
+                set_led_blink "red:5g"
+                set_led_blink "blue:5g"
                 ;;
             *)
                 set_led_blink "${best_color}:5g"
@@ -89,14 +83,27 @@ set_5g_led_by_snr() {
         esac
     fi
 
-    echo "5G: $best_color (SNR=$SNR)"
+    echo "5G LED: $best_color (SNR=$SNR)"
 }
 
+#------------------------------------#  KILL ALL 
+for LED in \
+    green:signal blue:signal red:signal \
+    green:5g blue:5g red:5g \
+    green:internet red:internet \
+    green:wifi blue:wifi red:wifi; do
+    turn_off_led "$LED"
+done
 
-turn_on_led "green:power"
+#------------------------------------#  POWER LED 
+if [ "$(uci get 5g-led.@led_power[0].enable 2>/dev/null)" = "1" ]; then
+    turn_on_led "green:power"
+else
+    turn_off_led "green:power"
+fi
 
+#------------------------------------#  MODEM & SNR 
 COMM=$(uci get modeminfo.settings.comm 2>/dev/null)
-
 if [ -z "$COMM" ]; then
     echo "Modem: Not Configured"
     turn_on_led "red:phone"
@@ -105,25 +112,17 @@ fi
 
 MODEM_INFO=$(sms_tool -d "$COMM" at 'AT+CSQ;+QENG="servingcell"')
 
-if [ -z "$MODEM_INFO" ]; then
-    echo "Modem: No Response"
-    turn_on_led "red:phone"
-else
-    echo "Modem: OK"
-    turn_on_led "green:phone"
-fi
-
+#------------------------------------#  CSQ & SNR 
 CSQ=$(echo "$MODEM_INFO" | grep -i '+CSQ:' | awk -F'[ ,:]+' '{print $2}')
 [ -z "$CSQ" ] && CSQ=0
 
 QENG_NR5G=$(echo "$MODEM_INFO" | grep 'NR5G-NSA')
-
 if [ -n "$QENG_NR5G" ]; then
     NR5G_SINR=$(echo "$QENG_NR5G" | awk -F',' '{print $6}' | tr -d '"')
-    if ! echo "$NR5G_SINR" | grep -qE '^[0-9]+$'; then
-        SNR=0
-    else
+    if echo "$NR5G_SINR" | grep -qE '^[0-9]+$'; then
         SNR=$NR5G_SINR
+    else
+        SNR=0
     fi
 else
     SNR=0
@@ -132,20 +131,25 @@ fi
 echo "CSQ = $CSQ"
 echo "SNR = $SNR"
 
-for LED in \
-    green:signal blue:signal red:signal \
-    green:5g blue:5g red:5g \
-    green:phone red:phone; do
-    turn_off_led "$LED"
-done
-
-if [ -n "$MODEM_INFO" ]; then
-    turn_on_led "green:phone"
-    set_led_blink "red:phone"
+#------------------------------------#  PHONE LED 
+if [ "$(uci get 5g-led.@led_phone[0].enable 2>/dev/null)" = "1" ]; then
+    if [ -n "$MODEM_INFO" ]; then
+        turn_on_led "green:phone"
+        set_led_blink "red:phone"
+    else
+        turn_on_led "red:phone"
+    fi
+else
+    turn_off_led "green:phone"
+    turn_off_led "red:phone"
 fi
 
-set_5g_led_by_snr
+#------------------------------------#  LED 5G QUALITY 
+if [ "$(uci get 5g-led.@led_5g[0].enable 2>/dev/null)" = "1" ]; then
+    set_5g_led_by_snr
+fi
 
+#------------------------------------# INTERNET
 found=0
 for IFACE in wwan0_1 wwan0; do
     if ip link show "$IFACE" >/dev/null 2>&1 && \
@@ -155,43 +159,46 @@ for IFACE in wwan0_1 wwan0; do
     fi
 done
 
-if [ "$found" -eq 1 ]; then
-    turn_on_led "green:internet"
-    echo "Internet: Connected"
-else
-    turn_off_led "red:internet"
-    echo "Internet: Not Connected"
-fi
-
-for LED in green:wifi blue:wifi red:wifi; do
-    turn_off_led "$LED"
-done
-
-WIFI_STATUS=$(uci get wireless.@wifi-device[0].disabled 2>/dev/null)
-if [ "$WIFI_STATUS" = "1" ]; then
-    echo "WiFi: Off"
-else
-    turn_on_led "green:wifi"
-    echo "WiFi: On"
-fi
-
-
-if [ "$found" -eq 1 ]; then
-    if [ "$CSQ" -ge 30 ]; then
-        turn_on_led "green:signal"
-        echo "Signal: Excellent (CSQ=$CSQ)"
-    elif [ "$CSQ" -ge 20 ]; then
-        turn_on_led "blue:signal"
-        echo "Signal: Good (CSQ=$CSQ)"
-    elif [ "$CSQ" -ge 1 ]; then
-        turn_on_led "red:signal"
-        turn_on_led "green:signal"
-        echo "Signal: Average (CSQ=$CSQ)"
+if [ "$(uci get 5g-led.@led_internate[0].enable 2>/dev/null)" = "1" ]; then
+    if [ "$found" -eq 1 ]; then
+        turn_on_led "green:internet"
+        echo "Internet: Connected"
     else
-        set_led_blink "red:signal"
-        echo "Signal: Poor (CSQ=$CSQ)"
+        turn_off_led "red:internet"
+        echo "Internet: Not Connected"
     fi
-else
-    turn_on_led "red:signal"
-    echo "Signal: No Internet (CSQ=$CSQ)"
+fi
+
+#------------------------------------#  WIFI 
+if [ "$(uci get 5g-led.@led_wifi[0].enable 2>/dev/null)" = "1" ]; then
+    WIFI_STATUS=$(uci get wireless.@wifi-device[0].disabled 2>/dev/null)
+    if [ "$WIFI_STATUS" = "1" ]; then
+        echo "WiFi: Off"
+    else
+        turn_on_led "green:wifi"
+        echo "WiFi: On"
+    fi
+fi
+
+#------------------------------------#  SIGNAL 
+if [ "$(uci get 5g-led.@led_mobile_signal[0].enable 2>/dev/null)" = "1" ]; then
+    if [ "$found" -eq 1 ]; then
+        if [ "$CSQ" -ge 30 ]; then
+            turn_on_led "green:signal"
+            echo "Signal: Excellent (CSQ=$CSQ)"
+        elif [ "$CSQ" -ge 20 ]; then
+            turn_on_led "blue:signal"
+            echo "Signal: Good (CSQ=$CSQ)"
+        elif [ "$CSQ" -ge 1 ]; then
+            turn_on_led "red:signal"
+            turn_on_led "green:signal"
+            echo "Signal: Average (CSQ=$CSQ)"
+        else
+            set_led_blink "red:signal"
+            echo "Signal: Poor (CSQ=$CSQ)"
+        fi
+    else
+        turn_on_led "red:signal"
+        echo "Signal: No Internet (CSQ=$CSQ)"
+    fi
 fi
