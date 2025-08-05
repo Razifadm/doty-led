@@ -10,7 +10,8 @@ snr.datatype = "uinteger"
 color = s:option(ListValue, "color", translate("LED Color"))
 color:value("green", "Green")
 color:value("blue", "Blue")
-color:value("yellow", "Yellow (Red + Green)")
+color:value("purple", "Purple")
+color:value("yellow", "Yellow")
 color:value("red", "Red")
 
 blink = s:option(Flag, "blink", translate("Blink LED"))
