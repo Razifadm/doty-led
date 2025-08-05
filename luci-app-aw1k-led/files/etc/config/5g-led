@@ -1,4 +1,22 @@
 
+config led_power
+	option enable '1'
+
+config led_5g
+	option enable '1'
+
+config led_mobile_signal
+	option enable '1'
+
+config led_wifi
+	option enable '1'
+
+config led_internate
+	option enable '1'
+
+config led_phone
+	option enable '1'
+
 config 5g_quality 'excellent'
 	option min_snr '25'
 	option color 'green'
@@ -9,7 +27,8 @@ config 5g_quality 'good'
 
 config 5g_quality 'average'
 	option min_snr '3'
-	option color 'yellow'
+	option color 'blue'
+	option blink '1'
 
 config 5g_quality 'bad'
 	option min_snr '0'
