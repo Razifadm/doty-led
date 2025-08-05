@@ -67,12 +67,21 @@ set_5g_led_by_snr() {
             turn_on_led "red:5g"
             turn_on_led "green:5g"
             ;;
+        purple)
+            turn_on_led "red:5g"
+            turn_on_led "blue:5g"
+            ;;
     esac
 
     if [ "$best_blink" = "1" ]; then
         case "$best_color" in
+            purple)
+                set_led_blink "red:5g"
+                set_led_blink "blue:5g"
+                ;;
             yellow)
                 set_led_blink "red:5g"
+                set_led_blink "green:5g"
                 ;;
             *)
                 set_led_blink "${best_color}:5g"
