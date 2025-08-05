@@ -1,0 +1,18 @@
+
+config 5g_quality 'excellent'
+	option min_snr '25'
+	option color 'green'
+
+config 5g_quality 'good'
+	option min_snr '20'
+	option color 'blue'
+
+config 5g_quality 'average'
+	option min_snr '3'
+	option color 'yellow'
+
+config 5g_quality 'bad'
+	option min_snr '0'
+	option color 'red'
+	option blink '1'
+
