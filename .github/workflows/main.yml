@@ -12,6 +12,9 @@ on:
         required: true
         default: '24.10.0'
 
+  schedule:
+    - cron: '0 3 * * *' # Runs every day at 03:00 UTC
+
 jobs:
   build:
     runs-on: ubuntu-22.04
