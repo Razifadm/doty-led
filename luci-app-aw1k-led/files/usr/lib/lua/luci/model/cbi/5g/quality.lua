@@ -5,7 +5,6 @@ m.description = translate("Configure LED behavior for Bad 5G signal.")
 
 s = m:section(NamedSection, "signal", "quality", translate("Signal Quality Thresholds"))
 
--- Daftar kualiti
 local qualities = {
 	{ id = "excellent", label = translate("Excellent") },
 	{ id = "good", label = translate("Good") },
@@ -13,7 +12,6 @@ local qualities = {
 	{ id = "bad", label = translate("Bad") }
 }
 
--- Loop setiap kualiti, dalam satu card
 local first = true
 for _, q in ipairs(qualities) do
 	if not first then
