@@ -30,24 +30,22 @@ set_5g_led_by_snr() {
 
     config_cb() { :; }
 
-    config_5g_quality() {
-        local section="$1"
-        local min_snr color blink
+    . /lib/functions.sh
+    config_load 5g-led
 
-        config_get min_snr "$section" min_snr
-        config_get color "$section" color
-        config_get blink "$section" blink
+    local SNR_LVLS="excellent good average bad"
+    for lvl in $SNR_LVLS; do
+        local min_snr color blink
+        config_get min_snr signal "${lvl}_min_snr"
+        config_get color signal "${lvl}_color"
+        config_get blink signal "${lvl}_blink"
 
         if [ "$SNR" -ge "$min_snr" ] && [ "$min_snr" -gt "$best_min_snr" ]; then
             best_min_snr=$min_snr
             best_color=$color
             best_blink=$blink
         fi
-    }
-
-    . /lib/functions.sh
-    config_load 5g-led
-    config_foreach config_5g_quality 5g_quality
+    done
 
     for LED in green:5g blue:5g red:5g; do
         turn_off_led "$LED"
@@ -96,7 +94,7 @@ for LED in \
 done
 
 #------------------------------------#  POWER LED 
-if [ "$(uci get 5g-led.@led_power[0].enable 2>/dev/null)" = "1" ]; then
+if [ "$(uci get 5g-led.station.enable_power 2>/dev/null)" = "1" ]; then
     turn_on_led "green:power"
 else
     turn_off_led "green:power"
@@ -132,7 +130,7 @@ echo "CSQ = $CSQ"
 echo "SNR = $SNR"
 
 #------------------------------------#  PHONE LED 
-if [ "$(uci get 5g-led.@led_phone[0].enable 2>/dev/null)" = "1" ]; then
+if [ "$(uci get 5g-led.station.enable_phone 2>/dev/null)" = "1" ]; then
     if [ -n "$MODEM_INFO" ]; then
         turn_on_led "green:phone"
         set_led_blink "red:phone"
@@ -145,7 +143,7 @@ else
 fi
 
 #------------------------------------#  LED 5G QUALITY 
-if [ "$(uci get 5g-led.@led_5g[0].enable 2>/dev/null)" = "1" ]; then
+if [ "$(uci get 5g-led.station.enable_5g 2>/dev/null)" = "1" ]; then
     set_5g_led_by_snr
 fi
 
@@ -159,7 +157,7 @@ for IFACE in wwan0_1 wwan0; do
     fi
 done
 
-if [ "$(uci get 5g-led.@led_internate[0].enable 2>/dev/null)" = "1" ]; then
+if [ "$(uci get 5g-led.station.enable_internet 2>/dev/null)" = "1" ]; then
     if [ "$found" -eq 1 ]; then
         turn_on_led "green:internet"
         echo "Internet: Connected"
@@ -170,7 +168,7 @@ if [ "$(uci get 5g-led.@led_internate[0].enable 2>/dev/null)" = "1" ]; then
 fi
 
 #------------------------------------#  WIFI 
-if [ "$(uci get 5g-led.@led_wifi[0].enable 2>/dev/null)" = "1" ]; then
+if [ "$(uci get 5g-led.station.enable_wifi 2>/dev/null)" = "1" ]; then
     WIFI_STATUS=$(uci get wireless.@wifi-device[0].disabled 2>/dev/null)
     if [ "$WIFI_STATUS" = "1" ]; then
         echo "WiFi: Off"
@@ -181,7 +179,7 @@ if [ "$(uci get 5g-led.@led_wifi[0].enable 2>/dev/null)" = "1" ]; then
 fi
 
 #------------------------------------#  SIGNAL 
-if [ "$(uci get 5g-led.@led_mobile_signal[0].enable 2>/dev/null)" = "1" ]; then
+if [ "$(uci get 5g-led.station.enable_mobile_signal 2>/dev/null)" = "1" ]; then
     if [ "$found" -eq 1 ]; then
         if [ "$CSQ" -ge 30 ]; then
             turn_on_led "green:signal"
