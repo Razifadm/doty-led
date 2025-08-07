@@ -1,6 +1,5 @@
 m = Map("5g-led", translate("5G Signal Quality"))
 
--- Tambah keterangan di bawah tajuk utama (bukan dalam card)
 m.description = translate("Configure LED behavior for Bad 5G signal.")
 
 s = m:section(NamedSection, "signal", "quality", translate("Signal Quality Thresholds"))
