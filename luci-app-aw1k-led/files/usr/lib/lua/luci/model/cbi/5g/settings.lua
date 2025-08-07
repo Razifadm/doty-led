@@ -1,8 +1,5 @@
--- /usr/lib/lua/luci/model/cbi/5g/settings.lua
-
 m = Map("5g-led", translate("LED Settings"))
 
--- Tambah keterangan di bawah tajuk utama
 m.description = translate("Enable or disable specific LED indicators for different system states.")
 
 s = m:section(NamedSection, "station", "led_control", translate("LED Enable/Disable"))
