@@ -107,9 +107,12 @@ jobs:
         find openwrt/bin/packages/ -type f -name "*.ipk" -exec cp {} firmware/ \;
         ls -lh firmware
 
-    - name: Generate tag with date and time
+    - name: Generate tag with date and time (Malaysia timezone)
       id: tag_datetime
-      run: echo "TAG_NAME=$(date -u '+%Y-%m-%d-%H%M')" >> $GITHUB_OUTPUT
+      env:
+        TZ: Asia/Kuala_Lumpur
+      run: |
+        echo "TAG_NAME=$(date '+%Y-%m-%d-%H%M')" >> $GITHUB_OUTPUT
 
     - name: Get luci-app versions and releases
       id: get_versions
@@ -130,7 +133,6 @@ jobs:
         echo "apps_info<<EOF" >> $GITHUB_OUTPUT
         echo -e "$apps_info" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
-
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
