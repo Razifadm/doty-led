@@ -55,7 +55,6 @@ jobs:
         SDK_BASE_URL="https://downloads.openwrt.org/releases/${FIRMWARE_VERSION}/targets/${TARGET}/"
         echo "Using SDK base URL: $SDK_BASE_URL"
 
-        # Convert target to dashed format for SDK file matching
         TARGET_DASH=$(echo "$TARGET" | sed 's|/|-|g')
 
         SDK_FILE=$(curl -s "$SDK_BASE_URL" | grep -oP "openwrt-sdk-.*?-${TARGET_DASH}_gcc-.*?Linux-x86_64\.tar\.(xz|zst)" | head -n 1)
@@ -112,6 +111,26 @@ jobs:
       id: tag_datetime
       run: echo "TAG_NAME=$(date -u '+%Y-%m-%d-%H%M')" >> $GITHUB_OUTPUT
 
+    - name: Get luci-app versions and releases
+      id: get_versions
+      run: |
+        apps_info=""
+        for dir in luci-app-*; do
+          if [ -f "$dir/Makefile" ]; then
+            app_name="$dir"
+            version=$(grep -E '^PKG_VERSION:?=' "$dir/Makefile" | head -n1 | sed 's/PKG_VERSION[:=]*//; s/\s//g')
+            release=$(grep -E '^PKG_RELEASE:?=' "$dir/Makefile" | head -n1 | sed 's/PKG_RELEASE[:=]*//; s/\s//g')
+            if [ -z "$release" ]; then
+              release="1"
+            fi
+            apps_info="${apps_info}${app_name}: ${version}-${release}\n"
+          fi
+        done
+        echo -e "$apps_info"
+        echo "apps_info<<EOF" >> $GITHUB_OUTPUT
+        echo -e "$apps_info" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
@@ -121,7 +140,9 @@ jobs:
           ✅ Build for target: `${{ github.event.inputs.target || 'qualcommax/ipq807x' }}`
           📦 Firmware version: `${{ github.event.inputs.firmware_version || '24.10.0' }}`
           🚀 Includes all luci-app-* IPKs from the repo.
+
+          ### App Versions:
+          ${{ steps.get_versions.outputs.apps_info }}
         files: firmware/*.ipk
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
