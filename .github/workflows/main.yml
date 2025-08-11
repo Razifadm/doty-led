@@ -123,13 +123,14 @@ jobs:
             if [ -z "$release" ]; then
               release="1"
             fi
-            apps_info="${apps_info}${app_name}: ${version}-${release}\n"
+            apps_info="${apps_info}${app_name}: V${version}-R${release}\n"
           fi
         done
         echo -e "$apps_info"
         echo "apps_info<<EOF" >> $GITHUB_OUTPUT
         echo -e "$apps_info" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
+
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
