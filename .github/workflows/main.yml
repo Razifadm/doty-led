@@ -41,15 +41,34 @@ jobs:
 
     - name: Download and extract OpenWrt SDK
       run: |
-        SDK_BASE_URL="https://downloads.openwrt.org/releases/${{ github.event.inputs.firmware_version }}/targets/${{ github.event.inputs.target }}/"
-        SDK_FILE=$(curl -s "$SDK_BASE_URL" | grep -oP 'openwrt-sdk-.*?-${{ steps.set_target.outputs.TARGET_DASH }}_gcc-.*?Linux-x86_64\.tar\.(xz|zst)' | head -n 1)
+        # Use inputs if set, otherwise use defaults
+        FIRMWARE_VERSION="${{ github.event.inputs.firmware_version }}"
+        TARGET="${{ github.event.inputs.target }}"
+
+        if [ -z "$FIRMWARE_VERSION" ]; then
+          FIRMWARE_VERSION="24.10.0"
+        fi
+        if [ -z "$TARGET" ]; then
+          TARGET="qualcommax/ipq807x"
+        fi
+
+        SDK_BASE_URL="https://downloads.openwrt.org/releases/${FIRMWARE_VERSION}/targets/${TARGET}/"
+        echo "Using SDK base URL: $SDK_BASE_URL"
+
+        # Convert target to dashed format for SDK file matching
+        TARGET_DASH=$(echo "$TARGET" | sed 's|/|-|g')
+
+        SDK_FILE=$(curl -s "$SDK_BASE_URL" | grep -oP "openwrt-sdk-.*?-${TARGET_DASH}_gcc-.*?Linux-x86_64\.tar\.(xz|zst)" | head -n 1)
+
         if [ -z "$SDK_FILE" ]; then
           echo "Unable to find matching SDK file"
           exit 1
         fi
+
         SDK_URL="${SDK_BASE_URL}${SDK_FILE}"
         echo "Downloading SDK: $SDK_URL"
         wget "$SDK_URL" -O openwrt.tar.${SDK_FILE##*.}
+
         mkdir openwrt
         if [[ "$SDK_FILE" == *.zst ]]; then
           tar --use-compress-program=unzstd -xvf openwrt.tar.zst -C openwrt --strip-components=1
@@ -89,15 +108,20 @@ jobs:
         find openwrt/bin/packages/ -type f -name "*.ipk" -exec cp {} firmware/ \;
         ls -lh firmware
 
+    - name: Generate tag with date and time
+      id: tag_datetime
+      run: echo "TAG_NAME=$(date -u '+%Y-%m-%d-%H%M')" >> $GITHUB_OUTPUT
+
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: luci-apps-${{ github.event.inputs.firmware_version }}
-        name: LuCI Apps Build – ${{ github.event.inputs.firmware_version }}
+        tag_name: ${{ steps.tag_datetime.outputs.TAG_NAME }}
+        name: LuCI Apps Build – ${{ steps.tag_datetime.outputs.TAG_NAME }}
         body: |
-          ✅ Build for target: `${{ github.event.inputs.target }}`
-          📦 Firmware version: `${{ github.event.inputs.firmware_version }}`
+          ✅ Build for target: `${{ github.event.inputs.target || 'qualcommax/ipq807x' }}`
+          📦 Firmware version: `${{ github.event.inputs.firmware_version || '24.10.0' }}`
           🚀 Includes all luci-app-* IPKs from the repo.
         files: firmware/*.ipk
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
