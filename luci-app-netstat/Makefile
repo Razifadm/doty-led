@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-netstat
-PKG_VERSION:=1.1
-PKG_RELEASE:=9
+PKG_VERSION:=1.2
+PKG_RELEASE:=0
 
 PKG_MAINTAINER:=dotycat <support@dotycat.com>
 PKG_LICENSE:=GPL-3.0
