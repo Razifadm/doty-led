@@ -1,1 +1,166 @@
 
+#!/bin/sh
+# toyml: Convert VLESS / VMess / Trojan links (WS/TCP, TLS/non-TLS) to Clash YAML template
+# Usage: toyml <input_file>
+# Output: writes YAML to stdout
+
+INPUT_FILE="$1"
+[ -f "$INPUT_FILE" ] || { echo "Error: input file not found" >&2; exit 1; }
+
+# URL decode
+urldecode() {
+    local data="${1//+/ }"
+    printf '%b' "${data//%/\\x}"
+}
+
+# Extract query parameter
+get_q() {
+    local qs="$1" key="$2"
+    echo "$qs" | tr '&' '\n' | grep -i "^$key=" | cut -d= -f2-
+}
+
+# Emit WS options without quotes
+emit_ws_opts() {
+    local p="$1" h="$2"
+    echo "    network: ws"
+    echo "    ws-opts:"
+    [ -n "$p" ] && echo "      path: $p"
+    if [ -n "$h" ]; then
+        echo "      headers:"
+        echo "        Host: $h"
+    fi
+}
+
+# YAML header
+echo "port: 7890
+socks-port: 7891
+redir-port: 7892
+mixed-port: 7893
+tproxy-port: 7895
+ipv6: false
+mode: rule
+log-level: silent
+allow-lan: true
+external-controller: 0.0.0.0:9090
+secret: ''
+bind-address: '*'
+unified-delay: true
+profile:
+  store-selected: true
+dns:
+  enable: true
+  ipv6: false
+  enhanced-mode: fake-ip
+  listen: 127.0.0.1:7874
+  nameserver:
+    - 1.1.1.1
+    - 1.0.0.1
+  fallback:
+    - https://cloudflare-dns.com/dns-query
+    - https://dns.google/dns-query
+  default-nameserver:
+    - 8.8.8.8
+    - 8.8.4.4
+proxies:"
+
+PROFILE_NAMES=""
+
+# Process input links
+while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%%$'\r'}"
+    [ -z "$line" ] && continue
+    scheme="${line%%://*}"
+
+    case "$scheme" in
+        vless|trojan)
+            rest="${line#*://}"
+            frag=""
+            qs=""
+            # Extract fragment
+            if echo "$rest" | grep -q '#'; then
+                frag="${rest##*#}"
+                rest="${rest%%#*}"
+            fi
+            # Extract query
+            if echo "$rest" | grep -q '?'; then
+                qs="${rest##*\?}"
+                rest="${rest%%\?*}"
+            fi
+
+            user_host_port="$rest"
+            user="${user_host_port%%@*}"
+            host_port="${user_host_port#*@}"
+            host="${host_port%%:*}"
+            port="${host_port#*:}"
+
+            name="$(urldecode "$frag")"
+            [ -z "$name" ] && name="$(echo $scheme | tr a-z A-Z)-${host}-${port}"
+
+            type=$(urldecode "$(get_q "$qs" "type")")
+            path=$(urldecode "$(get_q "$qs" "path")")
+            vhost=$(urldecode "$(get_q "$qs" "host")")
+            security=$(urldecode "$(get_q "$qs" "security")")
+            [ "$security" = "tls" ] && tls_enabled="true" || tls_enabled="false"
+
+            echo "  - name: $name"
+            echo "    server: $host"
+            echo "    port: $port"
+            echo "    type: $scheme"
+            [ "$scheme" = "vless" ] && echo "    uuid: $user"
+            [ "$scheme" = "trojan" ] && echo "    password: $user"
+            echo "    cipher: auto"
+            echo "    tls: $tls_enabled"
+            echo "    skip-cert-verify: true"
+            [ "$tls_enabled" = "true" ] && [ -n "$vhost" ] && echo "    servername: $vhost"
+            [ "$type" = "ws" ] && emit_ws_opts "$path" "$vhost"
+            echo "    udp: true"
+            echo ""
+
+            PROFILE_NAMES="$PROFILE_NAMES
+      - $name"
+        ;;
+        vmess)
+            rest="${line#vmess://}"
+            vmess_json="$(echo "$rest" | base64 -d 2>/dev/null)"
+            [ -z "$vmess_json" ] && continue
+
+            name="$(echo "$vmess_json" | sed -n 's/.*"ps":"\([^"]*\)".*/\1/p')"
+            host="$(echo "$vmess_json" | sed -n 's/.*"add":"\([^"]*\)".*/\1/p')"
+            port="$(echo "$vmess_json" | sed -n 's/.*"port":"\([^"]*\)".*/\1/p')"
+            user="$(echo "$vmess_json" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
+            type="$(echo "$vmess_json" | sed -n 's/.*"net":"\([^"]*\)".*/\1/p')"
+            path="$(echo "$vmess_json" | sed -n 's/.*"path":"\([^"]*\)".*/\1/p')"
+            vhost="$(echo "$vmess_json" | sed -n 's/.*"host":"\([^"]*\)".*/\1/p')"
+            tls="$(echo "$vmess_json" | sed -n 's/.*"tls":"\([^"]*\)".*/\1/p')"
+            [ "$tls" = "tls" ] && tls_enabled="true" || tls_enabled="false"
+            [ -z "$name" ] && name="VMESS-${host}-${port}"
+
+            echo "  - name: $name"
+            echo "    server: $host"
+            echo "    port: $port"
+            echo "    type: vmess"
+            echo "    uuid: $user"
+            echo "    cipher: auto"
+            echo "    tls: $tls_enabled"
+            echo "    skip-cert-verify: true"
+            [ "$tls_enabled" = "true" ] && [ -n "$vhost" ] && echo "    servername: $vhost"
+            [ "$type" = "ws" ] && emit_ws_opts "$path" "$vhost"
+            echo "    udp: true"
+            echo ""
+
+            PROFILE_NAMES="$PROFILE_NAMES
+      - $name"
+        ;;
+        *)
+            echo "  # Unsupported scheme: $scheme"
+        ;;
+    esac
+done < "$INPUT_FILE"
+
+echo "proxy-groups:
+  - name: DOTYCAT
+    type: select
+    proxies:$PROFILE_NAMES
+      - DIRECT
+rules:
+  - MATCH,DOTYCAT"
