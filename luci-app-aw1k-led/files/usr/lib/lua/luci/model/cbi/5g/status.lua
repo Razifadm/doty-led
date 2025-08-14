@@ -6,10 +6,8 @@ m.submit = false
 
 local result = sys.exec("/usr/bin/led-status.sh 2>/dev/null") or ""
 
--- initialize defaults
 local csq, snr, led5g, internet, wifi = 0, 0, "off", "Disconnected", "Off"
 
--- parse line by line
 for line in result:gmatch("[^\r\n]+") do
     local v = line:match("CSQ%s*=%s*(%d+)")
     if v then csq = tonumber(v) end
@@ -41,7 +39,20 @@ snr_field.default = string.format("<span style='color:%s;'>SNR=%d</span>", snr_c
 
 local led_field = s:option(DummyValue, "led5g", "5G LED")
 led_field.rawhtml = true
-local led_color = led5g:lower() == "yellow" and "purple" or "green" or "red"
+
+local led_color = "gray"  -- default
+local led_lower = led5g:lower()
+
+if led_lower == "yellow" then
+    led_color = "orange"
+elseif led_lower == "purple" then
+    led_color = "purple"
+elseif led_lower == "green" then
+    led_color = "green"
+elseif led_lower == "red" then
+    led_color = "red"
+end
+
 led_field.default = string.format("<span style='color:%s;'>%s (SNR=%d)</span>", led_color, led5g, snr)
 
 local internet_field = s:option(DummyValue, "internet", "Internet")
