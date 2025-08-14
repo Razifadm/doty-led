@@ -1,11 +1,30 @@
-<%+header%>
-<h2><%:ToYML Converter%></h2>
-<p><%:Convert VLESS / VMess / Trojan configs to Clash YAML format in real time.%></p>
 
-<!-- Alert box at the top -->
-<div id="status" class="alert" style="display:none;"></div>
+<%+header%>
+<h2><%:OC Converter%></h2>
+<p><%:Convert VLESS / VMess / Trojan Converter.%></p>
+<style>
+.custom-alert {
+    padding: 12px 18px;
+    border-radius: 5px;
+    margin: 15px 0;
+    font-weight: 500;
+    font-size: 14px;
+    border: 1px solid transparent;
+}
+.custom-alert-success {
+    background-color: #e8f7e4;
+    border-color: #a6d8a0;
+    color: #2f6627;
+}
+.custom-alert-danger {
+    background-color: #fde8e8;
+    border-color: #f5b5b5;
+    color: #7d1d1d;
+}
+</style>
 
 <div class="cbi-section">
+<div id="status" class="custom-alert" style="display:none;"></div>
 
   <div class="cbi-value">
     <label class="cbi-value-title"><%:Save As Name%>:</label>
@@ -38,6 +57,7 @@
 
 <script>
 let timer = null;
+let alertTimer = null;
 
 document.getElementById('config').addEventListener('input', function() {
     clearTimeout(timer);
@@ -60,25 +80,37 @@ function convertConfig() {
     });
 }
 
+function showAlert(message, type) {
+    let statusEl = document.getElementById('status');
+    clearTimeout(alertTimer);
+    statusEl.className = "custom-alert custom-alert-" + type;
+    statusEl.innerHTML = message;
+    statusEl.style.display = "block";
+    alertTimer = setTimeout(() => {
+        statusEl.style.display = "none";
+    }, 20000); // Show for 20 seconds
+}
+
 function saveYAML() {
-    let filename = document.getElementById('filename').value;
-    let yaml = document.getElementById('yaml').value;
+    let filename = document.getElementById('filename').value.trim();
+    let yaml = document.getElementById('yaml').value.trim();
+
+    if (!yaml) {
+        showAlert("<%:No YAML data to save%>", "danger");
+        return;
+    }
+
     fetch('<%=url("admin/services/toyml_save")%>', {
         method: 'POST',
         body: new URLSearchParams({ filename, yaml })
     })
     .then(res => res.text())
     .then(resp => {
-        let statusEl = document.getElementById('status');
         if (resp === "OK") {
-            statusEl.className = "alert alert-success";
-            statusEl.innerHTML = "<%:Saved successfully%>";
+            showAlert("<%:YAML saved successfully%>", "success");
         } else {
-            statusEl.className = "alert alert-danger";
-            statusEl.innerHTML = "<%:Save failed%>";
+            showAlert("<%:Failed to save YAML%>", "danger");
         }
-        statusEl.style.display = "block";
-        setTimeout(() => { statusEl.style.display = "none"; }, 30000);
     });
 }
 </script>
