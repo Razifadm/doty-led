@@ -1,0 +1,85 @@
+<%+header%>
+<h2><%:ToYML Converter%></h2>
+<p><%:Convert VLESS / VMess / Trojan configs to Clash YAML format in real time.%></p>
+
+<!-- Alert box at the top -->
+<div id="status" class="alert" style="display:none;"></div>
+
+<div class="cbi-section">
+
+  <div class="cbi-value">
+    <label class="cbi-value-title"><%:Save As Name%>:</label>
+    <div class="cbi-value-field">
+      <input type="text" id="filename" class="cbi-input-text" placeholder="custom">
+    </div>
+  </div>
+
+  <div class="cbi-value">
+    <label class="cbi-value-title"><%:Paste Config%>:</label>
+    <div class="cbi-value-field">
+      <textarea id="config" class="cbi-input-textarea" rows="6"></textarea>
+    </div>
+  </div>
+
+  <div class="cbi-value">
+    <label class="cbi-value-title"><%:Generated YAML%>:</label>
+    <div class="cbi-value-field">
+      <textarea id="yaml" class="cbi-input-textarea" rows="12" readonly></textarea>
+    </div>
+  </div>
+
+  <div class="cbi-value">
+    <div class="cbi-value-field">
+      <button class="btn cbi-button cbi-button-save" onclick="saveYAML()"><%:Save%></button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let timer = null;
+
+document.getElementById('config').addEventListener('input', function() {
+    clearTimeout(timer);
+    timer = setTimeout(convertConfig, 500);
+});
+
+function convertConfig() {
+    let config = document.getElementById('config').value;
+    if (config.trim() === "") {
+        document.getElementById('yaml').value = "";
+        return;
+    }
+    fetch('<%=url("admin/services/toyml_convert")%>', {
+        method: 'POST',
+        body: new URLSearchParams({ config })
+    })
+    .then(res => res.text())
+    .then(data => {
+        document.getElementById('yaml').value = data;
+    });
+}
+
+function saveYAML() {
+    let filename = document.getElementById('filename').value;
+    let yaml = document.getElementById('yaml').value;
+    fetch('<%=url("admin/services/toyml_save")%>', {
+        method: 'POST',
+        body: new URLSearchParams({ filename, yaml })
+    })
+    .then(res => res.text())
+    .then(resp => {
+        let statusEl = document.getElementById('status');
+        if (resp === "OK") {
+            statusEl.className = "alert alert-success";
+            statusEl.innerHTML = "<%:Saved successfully%>";
+        } else {
+            statusEl.className = "alert alert-danger";
+            statusEl.innerHTML = "<%:Save failed%>";
+        }
+        statusEl.style.display = "block";
+        setTimeout(() => { statusEl.style.display = "none"; }, 30000);
+    });
+}
+</script>
+<%+footer%>
