@@ -70,7 +70,7 @@ function convertConfig() {
         document.getElementById('yaml').value = "";
         return;
     }
-    fetch('<%=url("admin/services/toyml_convert")%>', {
+    fetch('<%=url("admin/tools/toyml_convert")%>', {
         method: 'POST',
         body: new URLSearchParams({ config })
     })
@@ -88,7 +88,7 @@ function showAlert(message, type) {
     statusEl.style.display = "block";
     alertTimer = setTimeout(() => {
         statusEl.style.display = "none";
-    }, 20000); // Show for 20 seconds
+    }, 20000);
 }
 
 function saveYAML() {
@@ -100,7 +100,7 @@ function saveYAML() {
         return;
     }
 
-    fetch('<%=url("admin/services/toyml_save")%>', {
+    fetch('<%=url("admin/tools/toyml_save")%>', {
         method: 'POST',
         body: new URLSearchParams({ filename, yaml })
     })
