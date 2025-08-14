@@ -1,4 +1,5 @@
 <%+header%>
+
 <%
 local sys = require "luci.sys"
 local http = require "luci.http"
@@ -85,7 +86,7 @@ local function get_monthly_stats(iface)
 end
 
 local ifaces = get_interfaces()
-local current_iface = http.formvalue("iface") or (ifaces[1] and ifaces[1] or "")
+local current_iface = http.formvalue("iface") or "wwan0_1"
 local view_mode = http.formvalue("mode") or "daily"
 local stats = {}
 local title = ""
@@ -153,16 +154,18 @@ end
                     </thead>
                     <tbody>
                         <% for _, stat in ipairs(stats) do %>
-                            <tr>
-                                <% if view_mode == "daily" then %>
-                                    <td><%=stat.date%></td>
-                                <% else %>
-                                    <td><%=stat.month%></td>
-                                <% end %>
-                                <td><%=format_bytes(stat.rx * 1024)%></td>
-                                <td><%=format_bytes(stat.tx * 1024)%></td>
-                                <td><%=format_bytes(stat.total * 1024)%></td>
-                            </tr>
+                            <% if stat.rx > 0 or stat.tx > 0 or stat.total > 0 then %>
+                                <tr>
+                                    <% if view_mode == "daily" then %>
+                                        <td><%=stat.date%></td>
+                                    <% else %>
+                                        <td><%=stat.month%></td>
+                                    <% end %>
+                                    <td><%=format_bytes(stat.rx * 1024)%></td>
+                                    <td><%=format_bytes(stat.tx * 1024)%></td>
+                                    <td><%=format_bytes(stat.total * 1024)%></td>
+                                </tr>
+                            <% end %>
                         <% end %>
                     </tbody>
                 </table>
@@ -193,17 +196,11 @@ end
 .network-table th,
 .network-table td {
     padding: 10px 15px;
-    text-align: left;
-    border-bottom: 1px solid #e0e0e0;
+    text-align: left; 
     word-wrap: break-word;
 }
 
-.network-table th {
-    background-color: #f5f5f5;
-    font-weight: bold;
-    color: #333;
-}
-
+ 
 .network-table tr:hover {
     background-color: #f9f9f9;
 }
@@ -215,8 +212,7 @@ end
 }
 
 .alert-message.warning {
-    background-color: #fff3cd;
-    border: 1px solid #ffeeba;
+    background-color: #fff3cd; 
     color: #856404;
 }
 
