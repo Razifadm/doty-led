@@ -1,0 +1,4 @@
+#!/bin/sh
+chmod +x /usr/bin/toyml
+
+exit 0
