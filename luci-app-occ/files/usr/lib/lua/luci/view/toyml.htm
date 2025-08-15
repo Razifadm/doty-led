@@ -1,6 +1,6 @@
 
 <%+header%>
-<h2><%:OC Converter%></h2>
+<h2><%:OCC Converter%></h2>
 <p><%:VLESS / VMess / Trojan Converter.%></p>
 <style>
 .custom-alert {
@@ -21,12 +21,16 @@
     border-color: #f5b5b5;
     color: #7d1d1d;
 }
+.pxt {
+    padding-top:10px;
+}
 </style>
 
 <div class="cbi-section">
+<h3><%:OC Converter%></h3>
 <div id="status" class="custom-alert" style="display:none;"></div>
 
-  <div class="cbi-value">
+  <div class="cbi-value pxt">
     <label class="cbi-value-title"><%:Save As Name%>:</label>
     <div class="cbi-value-field">
       <input type="text" id="filename" class="cbi-input-text" placeholder="custom">
