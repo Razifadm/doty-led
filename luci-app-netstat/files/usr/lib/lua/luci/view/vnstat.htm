@@ -1,45 +1,40 @@
 <%+header%>
 
 <%
-local sys = require "luci.sys"
+local sys  = require "luci.sys"
 local http = require "luci.http"
-local util = require "luci.util"
-local uci = require "luci.model.uci".cursor()
+local uci  = require "luci.model.uci".cursor()
 
--- Format bytes to human readable
-local function format_bytes(bytes)
-    if not bytes or bytes <= 0 then return "0 B" end
-    local units = {"B", "KB", "MB", "GB", "TB"}
-    local i = 1
-    while bytes >= 1024 and i < #units do
-        bytes = bytes / 1024
-        i = i + 1
-    end
-    return string.format("%.2f %s", bytes, units[i])
+-- Convert vnstat values with units into raw bytes
+local function to_bytes(value, unit)
+    local multipliers = {
+        ["KiB"] = 1024,
+        ["MiB"] = 1024^2,
+        ["GiB"] = 1024^3,
+        ["TiB"] = 1024^4
+    }
+    return tonumber(value) * (multipliers[unit] or 1)
 end
 
--- Format date from mm/dd/yy to 02 Jun 25
+-- Format date mm/dd/yy → "02 Jun 25"
 local function format_date(date_str)
-    local month_names = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", 
-                        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"}
+    local month_names = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"}
     local m, d, y = date_str:match("(%d%d)/(%d%d)/(%d%d)")
     if m and d and y then
-        m = tonumber(m)
-        return string.format("%02d %s %02d", tonumber(d), month_names[m], tonumber(y))
+        return string.format("%02d %s %02d", tonumber(d), month_names[tonumber(m)], tonumber(y))
     end
     return date_str
 end
 
--- Get interfaces from vnstat
+-- Get vnstat interfaces
 local function get_interfaces()
     local ifaces = {}
     local p = io.popen("ls /etc/vnstat/ 2>/dev/null | grep -v '.conf$' | grep -v '.old$'")
     if p then
         for iface in p:lines() do
             iface = iface:match("^%s*(.-)%s*$")
-            if iface ~= "" then
-                table.insert(ifaces, iface)
-            end
+            if iface ~= "" then table.insert(ifaces, iface) end
         end
         p:close()
     end
@@ -47,49 +42,41 @@ local function get_interfaces()
     return ifaces
 end
 
--- Parse daily stats
+-- Daily stats
 local function get_daily_stats(iface)
     local stats = {}
     local output = sys.exec("vnstat -i " .. iface .. " --days 2>/dev/null") or ""
-    
-    for date, rx_val, rx_unit, tx_val, tx_unit, total_val, total_unit in 
-        output:gmatch("(%d%d/%d%d/%d%d)%s+([%d%.]+)%s+([KMGT]iB)%s+|%s+([%d%.]+)%s+([KMGT]iB)%s+|%s+([%d%.]+)%s+([KMGT]iB)") do
-        
+    for date, rx_val, rx_unit, tx_val, tx_unit in
+        output:gmatch("(%d%d/%d%d/%d%d)%s+([%d%.]+)%s+([KMGT]iB)%s+|%s+([%d%.]+)%s+([KMGT]iB)") do
         table.insert(stats, {
-            date = format_date(date),
-            rx = tonumber(rx_val) * (rx_unit == "MiB" and 1024 or rx_unit == "GiB" and 1024*1024 or 1),
-            tx = tonumber(tx_val) * (tx_unit == "MiB" and 1024 or tx_unit == "GiB" and 1024*1024 or 1),
-            total = tonumber(total_val) * (total_unit == "MiB" and 1024 or total_unit == "GiB" and 1024*1024 or 1)
+            date  = format_date(date),
+            rx    = to_bytes(rx_val, rx_unit),
+            tx    = to_bytes(tx_val, tx_unit)
         })
     end
-    
     return stats
 end
 
--- Parse monthly stats
+-- Monthly stats
 local function get_monthly_stats(iface)
     local stats = {}
     local output = sys.exec("vnstat -i " .. iface .. " --months 2>/dev/null") or ""
-    
-    for month, rx_val, rx_unit, tx_val, tx_unit, total_val, total_unit in 
-        output:gmatch("(%a+%s+'%d%d)%s+([%d%.]+)%s+([KMGT]iB)%s+|%s+([%d%.]+)%s+([KMGT]iB)%s+|%s+([%d%.]+)%s+([KMGT]iB)") do
-        
+    for month, rx_val, rx_unit, tx_val, tx_unit in
+        output:gmatch("(%a+%s+'%d%d)%s+([%d%.]+)%s+([KMGT]iB)%s+|%s+([%d%.]+)%s+([KMGT]iB)") do
         table.insert(stats, {
             month = month,
-            rx = tonumber(rx_val) * (rx_unit == "MiB" and 1024 or rx_unit == "GiB" and 1024*1024 or 1),
-            tx = tonumber(tx_val) * (tx_unit == "MiB" and 1024 or tx_unit == "GiB" and 1024*1024 or 1),
-            total = tonumber(total_val) * (total_unit == "MiB" and 1024 or total_unit == "GiB" and 1024*1024 or 1)
+            rx    = to_bytes(rx_val, rx_unit),
+            tx    = to_bytes(tx_val, tx_unit)
         })
     end
-    
     return stats
 end
 
-local ifaces = get_interfaces()
+-- UI inputs
+local ifaces        = get_interfaces()
 local current_iface = http.formvalue("iface") or "wwan0_1"
-local view_mode = http.formvalue("mode") or "daily"
-local stats = {}
-local title = ""
+local view_mode     = http.formvalue("mode") or "daily"
+local stats, title  = {}, ""
 
 if current_iface ~= "" then
     if view_mode == "daily" then
@@ -104,8 +91,9 @@ end
 
 <div class="cbi-map">
     <h2 name="content"><%:Network Usage%></h2>
-    
+
     <div class="cbi-section">
+        <!-- Interface & Mode Select -->
         <form method="get" class="inline">
             <div class="cbi-value">
                 <label class="cbi-value-title"><%:Interface%></label>
@@ -121,7 +109,7 @@ end
                     </select>
                 </div>
             </div>
-            
+
             <div class="cbi-value">
                 <label class="cbi-value-title"><%:View Mode%></label>
                 <div class="cbi-value-field">
@@ -134,107 +122,88 @@ end
         </form>
     </div>
 
-    <% if current_iface ~= "" then %>
+    <% if current_iface ~= "" and #stats > 0 then %>
         <div class="cbi-section">
             <h3><%=title%> <small>(<%=current_iface%>)</small></h3>
-            
-            <% if #stats > 0 then %>
-                <table class="network-table">
-                    <thead>
-                        <tr>
-                            <% if view_mode == "daily" then %>
-                                <th style="width:25%"><%:Date%></th>
-                            <% else %>
-                                <th style="width:25%"><%:Month%></th>
-                            <% end %>
-                            <th style="width:25%"><%:RX%></th>
-                            <th style="width:25%"><%:TX%></th>
-                            <th style="width:25%"><%:Total%></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <% for _, stat in ipairs(stats) do %>
-                            <% if stat.rx > 0 or stat.tx > 0 or stat.total > 0 then %>
-                                <tr>
-                                    <% if view_mode == "daily" then %>
-                                        <td><%=stat.date%></td>
-                                    <% else %>
-                                        <td><%=stat.month%></td>
-                                    <% end %>
-                                    <td><%=format_bytes(stat.rx * 1024)%></td>
-                                    <td><%=format_bytes(stat.tx * 1024)%></td>
-                                    <td><%=format_bytes(stat.total * 1024)%></td>
-                                </tr>
-                            <% end %>
-                        <% end %>
-                    </tbody>
-                </table>
-            <% else %>
-                <div class="alert-message warning">
-                    <%:No data available for %> <%=current_iface%>
-                    <pre><%=sys.exec("vnstat -i " .. current_iface .. (view_mode == "daily" and " --days" or " --months") .. " 2>&1")%></pre>
-                </div>
-            <% end %>
+            <canvas id="trafficChart" height="100"></canvas>
         </div>
+
+        <script src="/luci-static/resources/netstat/chart.js"></script>
+        <script>
+        const ctx = document.getElementById('trafficChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [
+                    <% for _, stat in ipairs(stats) do %>
+                        "<%= view_mode == "daily" and stat.date or stat.month %>",
+                    <% end %>
+                ],
+                datasets: [
+                    {
+                        label: 'Download (RX)',
+                        borderColor: 'rgb(54, 162, 235)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        tension: 0.4,
+                        fill: true,
+                        data: [
+                            <% for _, stat in ipairs(stats) do %>
+                                <%= math.floor(stat.rx) %>,
+                            <% end %>
+                        ]
+                    },
+                    {
+                        label: 'Upload (TX)',
+                        borderColor: 'rgb(255, 99, 132)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        tension: 0.4,
+                        fill: true,
+                        data: [
+                            <% for _, stat in ipairs(stats) do %>
+                                <%= math.floor(stat.tx) %>,
+                            <% end %>
+                        ]
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let value = context.raw;
+                                if (value > 1099511627776) return (value/1099511627776).toFixed(2) + ' TB';
+                                if (value > 1073741824)   return (value/1073741824).toFixed(2) + ' GB';
+                                if (value > 1048576)      return (value/1048576).toFixed(2) + ' MB';
+                                if (value > 1024)         return (value/1024).toFixed(2) + ' KB';
+                                return value + ' B';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        ticks: {
+                            callback: function(value) {
+                                if (value > 1099511627776) return (value/1099511627776).toFixed(2) + ' TB';
+                                if (value > 1073741824)   return (value/1073741824).toFixed(2) + ' GB';
+                                if (value > 1048576)      return (value/1048576).toFixed(2) + ' MB';
+                                if (value > 1024)         return (value/1024).toFixed(2) + ' KB';
+                                return value + ' B';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        </script>
     <% else %>
-        <div class="cbi-section">
-            <div class="alert-message warning">
-                <%:No interface selected or no vnstat data available%>
-            </div>
+        <div class="alert-message warning">
+            <%:No data available for %> <%=current_iface%>
         </div>
     <% end %>
 </div>
-
-<style>
-.network-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-    table-layout: fixed;
-}
-
-.network-table th,
-.network-table td {
-    padding: 10px 15px;
-    text-align: left; 
-    word-wrap: break-word;
-}
-
- 
-.network-table tr:hover {
-    background-color: #f9f9f9;
-}
-
-.alert-message {
-    padding: 15px;
-    margin: 15px 0;
-    border-radius: 4px;
-}
-
-.alert-message.warning {
-    background-color: #fff3cd; 
-    color: #856404;
-}
-
-pre {
-    margin-top: 10px;
-    padding: 10px;
-    background: #f8f9fa;
-    border-radius: 3px;
-    overflow: auto;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-}
-
-@media (max-width: 768px) {
-    .network-table {
-        font-size: 12px;
-    }
-    .network-table th,
-    .network-table td {
-        padding: 15px 10px;
-    }
-}
-</style>
 
 <%+footer%>
