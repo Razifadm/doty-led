@@ -5,7 +5,6 @@ local sys  = require "luci.sys"
 local http = require "luci.http"
 local uci  = require "luci.model.uci".cursor()
 
--- Convert vnstat values with units into raw bytes
 local function to_bytes(value, unit)
     local multipliers = {
         ["KiB"] = 1024,
@@ -16,7 +15,6 @@ local function to_bytes(value, unit)
     return tonumber(value) * (multipliers[unit] or 1)
 end
 
--- Format date mm/dd/yy → "02 Jun 25"
 local function format_date(date_str)
     local month_names = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
                          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"}
@@ -27,7 +25,6 @@ local function format_date(date_str)
     return date_str
 end
 
--- Get vnstat interfaces
 local function get_interfaces()
     local ifaces = {}
     local p = io.popen("ls /etc/vnstat/ 2>/dev/null | grep -v '.conf$' | grep -v '.old$'")
@@ -42,7 +39,6 @@ local function get_interfaces()
     return ifaces
 end
 
--- Daily stats
 local function get_daily_stats(iface)
     local stats = {}
     local output = sys.exec("vnstat -i " .. iface .. " --days 2>/dev/null") or ""
@@ -57,7 +53,6 @@ local function get_daily_stats(iface)
     return stats
 end
 
--- Monthly stats
 local function get_monthly_stats(iface)
     local stats = {}
     local output = sys.exec("vnstat -i " .. iface .. " --months 2>/dev/null") or ""
@@ -72,7 +67,6 @@ local function get_monthly_stats(iface)
     return stats
 end
 
--- UI inputs
 local ifaces        = get_interfaces()
 local current_iface = http.formvalue("iface") or "wwan0_1"
 local view_mode     = http.formvalue("mode") or "daily"
