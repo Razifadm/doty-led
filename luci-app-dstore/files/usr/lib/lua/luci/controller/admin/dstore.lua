@@ -12,54 +12,44 @@ function index()
     entry({"admin", "tools", "dstore", "api", "manage"}, call("action_app_manage"), nil).leaf = true
 end
 
+local function clear_opkg_lock()
+    local nixio = require "nixio.fs"
+    local lock_files = { "/var/lock/opkg.lock", "/var/lib/opkg/status.lock" }
+    for _, f in ipairs(lock_files) do
+        if nixio.stat(f) then
+            nixio.remove(f)
+        end
+    end
+end
+
 function action_app_manage()
     local url = luci.http.formvalue("url")
     local pkg = luci.http.formvalue("pkg")
     local action = luci.http.formvalue("do")
     luci.http.prepare_content("text/plain")
 
-    local function clear_opkg_lock()
-        local lock_files = { "/var/lock/opkg.lock", "/var/lib/opkg/status.lock" }
-        for _, f in ipairs(lock_files) do
-            if nixio.fs.stat(f) then
-                luci.http.write("Found lock file: " .. f .. ", removing...\n")
-                nixio.fs.remove(f)
-            end
-        end
-    end
-
     if action == "list" then
         clear_opkg_lock()
-        luci.http.write(luci.sys.exec("opkg list-installed"))
+        luci.http.write(luci.sys.exec("opkg list-installed 2>/dev/null"))
         return
     end
 
     if action == "install" and url and url:match("^https?://") and pkg then
         luci.http.write("Installing " .. pkg .. "...\n\n")
         local tmp_path = "/tmp/app.ipk"
-        luci.http.write("Trying to download with wget...\n")
         local wget_cmd = string.format("wget -O '%s' '%s' 2>&1", tmp_path, url)
-        local wget_output = luci.sys.exec(wget_cmd)
-        local wget_success = nixio.fs.stat(tmp_path) and nixio.fs.stat(tmp_path).size > 0
+        luci.http.write("Downloading package...\n")
+        luci.sys.exec(wget_cmd)
 
-        if not wget_success then
-            luci.http.write("wget failed, retrying with curl...\n")
-            local curl_cmd = string.format("curl -L --retry 3 -o '%s' '%s' 2>&1", tmp_path, url)
-            local curl_output = luci.sys.exec(curl_cmd)
-            luci.http.write(curl_output .. "\n")
-        else
-            luci.http.write(wget_output .. "\n")
-        end
-
-        local file_stat = nixio.fs.stat(tmp_path)
+        local nixio = require "nixio.fs"
+        local file_stat = nixio.stat(tmp_path)
         if file_stat and file_stat.size > 0 then
-            luci.http.write("\nChecking opkg lock...\n")
             clear_opkg_lock()
-            luci.http.write("\nUpdating package list...\n")
             luci.sys.exec("opkg update >/dev/null 2>&1")
-            luci.http.write("\nInstalling package...\n")
-            luci.http.write(luci.sys.exec("opkg install " .. tmp_path .. " 2>&1"))
-            nixio.fs.remove(tmp_path)
+            local output = luci.sys.exec("opkg install " .. tmp_path .. " 2>&1")
+            output = output:gsub("Collected errors:.-\n", "")
+            luci.http.write(output)
+            nixio.remove(tmp_path)
         else
             luci.http.write("\nDownload failed. Could not install package.\n")
         end
@@ -67,9 +57,10 @@ function action_app_manage()
     end
 
     if action == "uninstall" and pkg then
-        luci.http.write("Uninstalling " .. pkg .. "...\n\n")
         clear_opkg_lock()
-        luci.http.write(luci.sys.exec("opkg remove " .. pkg .. " 2>&1"))
+        local output = luci.sys.exec("opkg remove " .. pkg .. " 2>&1")
+        output = output:gsub("Collected errors:.-\n", "")
+        luci.http.write(output)
         return
     end
 
