@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-dstore
 PKG_VERSION:=1.2
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 PKG_MAINTAINER:=dotycat <support@dotycat.com>
 PKG_LICENSE:=GPL-3.0
