@@ -8,67 +8,67 @@ function index()
     entry({"admin", "tools", "dstore", "not_installed"}, template("dstore/not_installed"), _("Not Installed"), 3)
     entry({"admin", "tools", "dstore", "update"}, template("dstore/update"), _("Update"), 4)
     entry({"admin", "tools", "dstore", "settings"}, cbi("dstore/settings"), _("Settings"), 5)
-
-    -- API
     entry({"admin", "tools", "dstore", "api", "list"}, call("action_app_json"), nil).leaf = true
     entry({"admin", "tools", "dstore", "api", "manage"}, call("action_app_manage"), nil).leaf = true
 end
-
 
 function action_app_manage()
     local url = luci.http.formvalue("url")
     local pkg = luci.http.formvalue("pkg")
     local action = luci.http.formvalue("do")
-
     luci.http.prepare_content("text/plain")
 
+    local function clear_opkg_lock()
+        local lock_files = { "/var/lock/opkg.lock", "/var/lib/opkg/status.lock" }
+        for _, f in ipairs(lock_files) do
+            if nixio.fs.stat(f) then
+                luci.http.write("Found lock file: " .. f .. ", removing...\n")
+                nixio.fs.remove(f)
+            end
+        end
+    end
+
     if action == "list" then
+        clear_opkg_lock()
         luci.http.write(luci.sys.exec("opkg list-installed"))
         return
     end
 
     if action == "install" and url and url:match("^https?://") and pkg then
         luci.http.write("Installing " .. pkg .. "...\n\n")
-
         local tmp_path = "/tmp/app.ipk"
-
-        -- Attempt using wget first
         luci.http.write("Trying to download with wget...\n")
         local wget_cmd = string.format("wget -O '%s' '%s' 2>&1", tmp_path, url)
         local wget_output = luci.sys.exec(wget_cmd)
-
-        -- Check if wget downloaded the file
         local wget_success = nixio.fs.stat(tmp_path) and nixio.fs.stat(tmp_path).size > 0
 
         if not wget_success then
             luci.http.write("wget failed, retrying with curl...\n")
             local curl_cmd = string.format("curl -L --retry 3 -o '%s' '%s' 2>&1", tmp_path, url)
             local curl_output = luci.sys.exec(curl_cmd)
-
-            -- Output curl result
             luci.http.write(curl_output .. "\n")
         else
-            -- Output wget result
             luci.http.write(wget_output .. "\n")
         end
 
-        -- Final check: does the file exist and is not empty?
         local file_stat = nixio.fs.stat(tmp_path)
         if file_stat and file_stat.size > 0 then
+            luci.http.write("\nChecking opkg lock...\n")
+            clear_opkg_lock()
             luci.http.write("\nUpdating package list...\n")
             luci.sys.exec("opkg update >/dev/null 2>&1")
             luci.http.write("\nInstalling package...\n")
             luci.http.write(luci.sys.exec("opkg install " .. tmp_path .. " 2>&1"))
-            luci.sys.exec("rm -f " .. tmp_path)
+            nixio.fs.remove(tmp_path)
         else
             luci.http.write("\nDownload failed. Could not install package.\n")
         end
-
         return
     end
 
     if action == "uninstall" and pkg then
         luci.http.write("Uninstalling " .. pkg .. "...\n\n")
+        clear_opkg_lock()
         luci.http.write(luci.sys.exec("opkg remove " .. pkg .. " 2>&1"))
         return
     end
@@ -76,7 +76,6 @@ function action_app_manage()
     luci.http.status(400, "Bad Request")
     luci.http.write("Invalid parameters.\n")
 end
-
 
 function action_app_json()
     local uci = require "luci.model.uci".cursor()
@@ -90,7 +89,6 @@ function action_app_json()
         return
     end
 
-    -- Get installed packages and versions
     local installed_map = {}
     for line in io.popen("opkg list-installed"):lines() do
         local pkg, ver = line:match("^(%S+)%s+%-%s+(.+)$")
@@ -100,7 +98,6 @@ function action_app_json()
     end
 
     local app_map = {}
-
     local function normalize_version(ver)
         return ver:gsub("^v", "")
     end
@@ -136,18 +133,14 @@ function action_app_json()
         if url:match("^https?://") then
             local output = luci.sys.exec("wget -qO- '" .. url .. "'")
             local ok, data = pcall(json.parse, output)
-
             if ok and type(data) == "table" then
                 for _, app in ipairs(data) do
                     if app.package and app.version then
                         local pkg = app.package
                         local new_ver = normalize_version(app.version)
-
-                        -- Add installed version
                         if installed_map[pkg] then
                             app.installed_version = normalize_version(installed_map[pkg])
                         end
-
                         if not app_map[pkg] or compare_versions(new_ver, normalize_version(app_map[pkg].version)) then
                             app_map[pkg] = app
                         end
