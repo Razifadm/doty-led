@@ -1,7 +1,7 @@
 # DOTYWRT
 
 Custom OpenWrt applications, packages, and build scripts maintained under the **dotywrt** project.
-
+Device: ARCADYAN AW1000 / IPQ8074
 ---
 
 ### LuCI Applications
