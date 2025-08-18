@@ -43,4 +43,5 @@ echo "src-git dotywrt https://github.com/yourname/dotywrt.git" >> feeds.conf.def
 
 # build as usual
 make menuconfig
-make
+make defconfig
+make -j$(nproc) || make -j1 V=s
