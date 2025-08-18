@@ -10,8 +10,9 @@ PKG_LICENSE:=GPL-3.0
 include $(INCLUDE_DIR)/package.mk
 
 define Package/$(PKG_NAME)
-  SECTION:=net
-  CATEGORY:=Network
+  SECTION:=luci
+  CATEGORY:=LuCI
+  SUBMENU:=3. Applications
   TITLE:=Xray Core (prebuilt)
   DEPENDS:=
 endef
