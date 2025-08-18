@@ -20,7 +20,7 @@ define Package/$(PKG_NAME)
   SUBMENU:=3. Applications
   TITLE:=$(LUCI_TITLE)
   PKGARCH:=all
-  DEPENDS:=+PACKAGE_vnstat:vnstat +PACKAGE_vnstat2:vnstat2
+  DEPENDS:=+vnstat
 endef
 
 define Package/$(PKG_NAME)/description
