@@ -1,9 +1,0 @@
-#!/bin/sh 
-mkdir -p /etc/xray
- 
-chmod +x /usr/bin/xray
-chmod +x /etc/xray/config.json.example
-chmod +x /etc/config/xray
-chmod +x /etc/init.d/xray
-
-exit 0
