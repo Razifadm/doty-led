@@ -1,25 +1,18 @@
-
 #!/bin/sh
-# toyml: Convert VLESS / VMess / Trojan links (WS/TCP, TLS/non-TLS) to Clash YAML template
-# Usage: toyml <input_file>
-# Output: writes YAML to stdout
 
 INPUT_FILE="$1"
 [ -f "$INPUT_FILE" ] || { echo "Error: input file not found" >&2; exit 1; }
 
-# URL decode
 urldecode() {
     local data="${1//+/ }"
     printf '%b' "${data//%/\\x}"
 }
 
-# Extract query parameter
 get_q() {
     local qs="$1" key="$2"
     echo "$qs" | tr '&' '\n' | grep -i "^$key=" | cut -d= -f2-
 }
 
-# Emit WS options without quotes
 emit_ws_opts() {
     local p="$1" h="$2"
     echo "    network: ws"
@@ -31,7 +24,134 @@ emit_ws_opts() {
     fi
 }
 
-# YAML header
+decode_vmess() {
+    local b64="$1"
+    local vmess_json
+    vmess_json="$(echo "$b64" | base64 -d 2>/dev/null)"
+    [ -z "$vmess_json" ] && return 1
+
+    local name host port user aid type path vhost tls tls_enabled
+
+    name="$(echo "$vmess_json" | sed -n 's/.*"ps"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+    host="$(echo "$vmess_json" | sed -n 's/.*"add"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+    port="$(echo "$vmess_json" | sed -n 's/.*"port"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+    user="$(echo "$vmess_json" | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+    aid="$(echo "$vmess_json" | sed -n 's/.*"aid"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+    type="$(echo "$vmess_json" | sed -n 's/.*"net"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+    path="$(echo "$vmess_json" | sed -n 's/.*"path"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+    vhost="$(echo "$vmess_json" | sed -n 's/.*"host"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+    tls="$(echo "$vmess_json" | sed -n 's/.*"tls"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+
+    [ "$tls" = "tls" ] && tls_enabled="true" || tls_enabled="false"
+    [ -z "$name" ] && name="VMESS-${host}-${port}"
+    [ -z "$aid" ] && aid="0"
+
+    echo "  - name: $name"
+    echo "    server: $host"
+    echo "    port: $port"
+    echo "    type: vmess"
+    echo "    uuid: $user"
+    echo "    alterId: $aid"
+    echo "    cipher: auto"
+    echo "    tls: $tls_enabled"
+    echo "    skip-cert-verify: true"
+    [ "$tls_enabled" = "true" ] && [ -n "$vhost" ] && echo "    servername: $vhost"
+    [ "$type" = "ws" ] && emit_ws_opts "$path" "$vhost"
+    echo "    udp: true"
+    echo ""
+
+    PROFILE_NAMES="$PROFILE_NAMES
+      - $name"
+}
+
+decode_vless() {
+    local line="$1"
+    local rest="${line#vless://}"
+    local frag="" qs=""
+    if echo "$rest" | grep -q '#'; then
+        frag="${rest##*#}"
+        rest="${rest%%#*}"
+    fi
+    if echo "$rest" | grep -q '?'; then
+        qs="${rest##*\?}"
+        rest="${rest%%\?*}"
+    fi
+    local user_host_port="$rest"
+    local user="${user_host_port%%@*}"
+    local host_port="${user_host_port#*@}"
+    local host="${host_port%%:*}"
+    local port="${host_port#*:}"
+
+    local name="$(urldecode "$frag")"
+    [ -z "$name" ] && name="VLESS-${host}-${port}"
+
+    local type=$(urldecode "$(get_q "$qs" "type")")
+    local path=$(urldecode "$(get_q "$qs" "path")")
+    local vhost=$(urldecode "$(get_q "$qs" "host")")
+    local security=$(urldecode "$(get_q "$qs" "security")")
+    [ "$security" = "tls" ] && tls_enabled="true" || tls_enabled="false"
+
+    echo "  - name: $name"
+    echo "    server: $host"
+    echo "    port: $port"
+    echo "    type: vless"
+    echo "    uuid: $user"
+    echo "    cipher: auto"
+    echo "    tls: $tls_enabled"
+    echo "    skip-cert-verify: true"
+    [ "$tls_enabled" = "true" ] && [ -n "$vhost" ] && echo "    servername: $vhost"
+    [ "$type" = "ws" ] && emit_ws_opts "$path" "$vhost"
+    echo "    udp: true"
+    echo ""
+
+    PROFILE_NAMES="$PROFILE_NAMES
+      - $name"
+}
+
+decode_trojan() {
+    local line="$1"
+    local rest="${line#trojan://}"
+    local frag="" qs=""
+    if echo "$rest" | grep -q '#'; then
+        frag="${rest##*#}"
+        rest="${rest%%#*}"
+    fi
+    if echo "$rest" | grep -q '?'; then
+        qs="${rest##*\?}"
+        rest="${rest%%\?*}"
+    fi
+    local user_host_port="$rest"
+    local user="${user_host_port%%@*}"
+    local host_port="${user_host_port#*@}"
+    local host="${host_port%%:*}"
+    local port="${host_port#*:}"
+
+    local name="$(urldecode "$frag")"
+    [ -z "$name" ] && name="TROJAN-${host}-${port}"
+
+    local type=$(urldecode "$(get_q "$qs" "type")")
+    local path=$(urldecode "$(get_q "$qs" "path")")
+    local vhost=$(urldecode "$(get_q "$qs" "host")")
+    local security=$(urldecode "$(get_q "$qs" "security")")
+    [ "$security" = "tls" ] && tls_enabled="true" || tls_enabled="false"
+
+    echo "  - name: $name"
+    echo "    server: $host"
+    echo "    port: $port"
+    echo "    type: trojan"
+    echo "    password: $user"
+    echo "    cipher: auto"
+    echo "    tls: $tls_enabled"
+    echo "    skip-cert-verify: true"
+    [ "$tls_enabled" = "true" ] && [ -n "$vhost" ] && echo "    servername: $vhost"
+    [ "$type" = "ws" ] && emit_ws_opts "$path" "$vhost"
+    echo "    udp: true"
+    echo ""
+
+    PROFILE_NAMES="$PROFILE_NAMES
+      - $name"
+}
+ 
 echo "port: 7890
 socks-port: 7891
 redir-port: 7892
@@ -67,95 +187,16 @@ proxies:"
 
 PROFILE_NAMES=""
 
-# Process input links
 while IFS= read -r line || [ -n "$line" ]; do
     line="${line%%$'\r'}"
     [ -z "$line" ] && continue
     scheme="${line%%://*}"
 
     case "$scheme" in
-        vless|trojan)
-            rest="${line#*://}"
-            frag=""
-            qs=""
-            # Extract fragment
-            if echo "$rest" | grep -q '#'; then
-                frag="${rest##*#}"
-                rest="${rest%%#*}"
-            fi
-            # Extract query
-            if echo "$rest" | grep -q '?'; then
-                qs="${rest##*\?}"
-                rest="${rest%%\?*}"
-            fi
-
-            user_host_port="$rest"
-            user="${user_host_port%%@*}"
-            host_port="${user_host_port#*@}"
-            host="${host_port%%:*}"
-            port="${host_port#*:}"
-
-            name="$(urldecode "$frag")"
-            [ -z "$name" ] && name="$(echo $scheme | tr a-z A-Z)-${host}-${port}"
-
-            type=$(urldecode "$(get_q "$qs" "type")")
-            path=$(urldecode "$(get_q "$qs" "path")")
-            vhost=$(urldecode "$(get_q "$qs" "host")")
-            security=$(urldecode "$(get_q "$qs" "security")")
-            [ "$security" = "tls" ] && tls_enabled="true" || tls_enabled="false"
-
-            echo "  - name: $name"
-            echo "    server: $host"
-            echo "    port: $port"
-            echo "    type: $scheme"
-            [ "$scheme" = "vless" ] && echo "    uuid: $user"
-            [ "$scheme" = "trojan" ] && echo "    password: $user"
-            echo "    cipher: auto"
-            echo "    tls: $tls_enabled"
-            echo "    skip-cert-verify: true"
-            [ "$tls_enabled" = "true" ] && [ -n "$vhost" ] && echo "    servername: $vhost"
-            [ "$type" = "ws" ] && emit_ws_opts "$path" "$vhost"
-            echo "    udp: true"
-            echo ""
-
-            PROFILE_NAMES="$PROFILE_NAMES
-      - $name"
-        ;;
-        vmess)
-            rest="${line#vmess://}"
-            vmess_json="$(echo "$rest" | base64 -d 2>/dev/null)"
-            [ -z "$vmess_json" ] && continue
-
-            name="$(echo "$vmess_json" | sed -n 's/.*"ps":"\([^"]*\)".*/\1/p')"
-            host="$(echo "$vmess_json" | sed -n 's/.*"add":"\([^"]*\)".*/\1/p')"
-            port="$(echo "$vmess_json" | sed -n 's/.*"port":"\([^"]*\)".*/\1/p')"
-            user="$(echo "$vmess_json" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
-            type="$(echo "$vmess_json" | sed -n 's/.*"net":"\([^"]*\)".*/\1/p')"
-            path="$(echo "$vmess_json" | sed -n 's/.*"path":"\([^"]*\)".*/\1/p')"
-            vhost="$(echo "$vmess_json" | sed -n 's/.*"host":"\([^"]*\)".*/\1/p')"
-            tls="$(echo "$vmess_json" | sed -n 's/.*"tls":"\([^"]*\)".*/\1/p')"
-            [ "$tls" = "tls" ] && tls_enabled="true" || tls_enabled="false"
-            [ -z "$name" ] && name="VMESS-${host}-${port}"
-
-            echo "  - name: $name"
-            echo "    server: $host"
-            echo "    port: $port"
-            echo "    type: vmess"
-            echo "    uuid: $user"
-            echo "    cipher: auto"
-            echo "    tls: $tls_enabled"
-            echo "    skip-cert-verify: true"
-            [ "$tls_enabled" = "true" ] && [ -n "$vhost" ] && echo "    servername: $vhost"
-            [ "$type" = "ws" ] && emit_ws_opts "$path" "$vhost"
-            echo "    udp: true"
-            echo ""
-
-            PROFILE_NAMES="$PROFILE_NAMES
-      - $name"
-        ;;
-        *)
-            echo "  # Unsupported scheme: $scheme"
-        ;;
+        vmess) decode_vmess "${line#vmess://}" ;;
+        vless) decode_vless "$line" ;;
+        trojan) decode_trojan "$line" ;;
+        *) echo "  # Unsupported scheme: $scheme" ;;
     esac
 done < "$INPUT_FILE"
 
