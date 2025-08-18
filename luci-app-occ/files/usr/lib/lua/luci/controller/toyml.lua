@@ -1,7 +1,7 @@
 module("luci.controller.toyml", package.seeall)
 
 function index()
-    entry({"admin", "tools", "toyml"}, template("toyml"), _("OCC Converter"), 90)
+    entry({"admin", "tools", "toyml"}, template("toyml"), _("OC Converter"), 90)
     entry({"admin", "tools", "toyml_convert"}, call("convert"), nil).leaf = true
     entry({"admin", "tools", "toyml_save"}, call("save"), nil).leaf = true
 end
