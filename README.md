@@ -1,4 +1,4 @@
-# dotywrt
+# DOTYWRT
 
 Custom OpenWrt applications, packages, and build scripts maintained under the **dotywrt** project.
 
