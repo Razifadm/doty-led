@@ -7,7 +7,7 @@ Custom OpenWrt applications, packages, and build scripts maintained under the **
 ## 📦 Included Packages
 
 ### Core
-- **xray-core (custom)**  
+- **xray-core (custom v25.3.31)**  
   A custom build of [Xray](https://github.com/XTLS/Xray-core) with support for:
   - Custom configuration options
   - Multipath functionality
