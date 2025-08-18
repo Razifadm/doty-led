@@ -4,16 +4,6 @@ Custom OpenWrt applications, packages, and build scripts maintained under the **
 
 ---
 
-## 📦 Included Packages
-
-### Core
-- **xray-core (custom v25.3.31)**  
-  A custom build of [Xray](https://github.com/XTLS/Xray-core) with support for:
-  - Custom configuration options
-  - Multipath functionality
-  - Optimizations for OpenWrt environments  
-  This package helps bypass network restrictions, secure traffic, and experiment with advanced routing setups.
-
 ### LuCI Applications
 - **luci-app-aw1k-led**  
   Manage and control LED indicators on supported AW1K devices.
