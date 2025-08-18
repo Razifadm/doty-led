@@ -1,8 +1,12 @@
-
 <%+header%>
-<h2><%:OCC Converter%></h2>
-<p><%:VLESS / VMess / Trojan Converter.%></p>
-<style>
+<h2>OCC Converter</h2>
+<p>VLESS / VMess / Trojan Converter.</p>
+<style> 
+.converter-section {
+    background: #fff;
+    padding: 20px; 
+}
+ 
 .custom-alert {
     padding: 12px 18px;
     border-radius: 5px;
@@ -10,6 +14,7 @@
     font-weight: 500;
     font-size: 14px;
     border: 1px solid transparent;
+    display: none;
 }
 .custom-alert-success {
     background-color: #e8f7e4;
@@ -21,42 +26,86 @@
     border-color: #f5b5b5;
     color: #7d1d1d;
 }
-.pxt {
-    padding-top:10px;
+ 
+.input-group {
+    margin-bottom: 15px;
 }
+.input-label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.input-field {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+ 
+.full-textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 13px;
+    font-family: monospace;
+    box-sizing: border-box;
+    resize: vertical;
+    min-height: 100px;
+}
+
+.cttl { 
+  padding-bottom:15px;
+  font-size:17px;
+}
+
+.btn {
+  display:inline-block;
+  padding:8px 16px;
+  margin-right:8px;
+  border:none;
+  border-radius:5px;
+  font-size:14px;
+  font-weight:bold;
+  cursor:pointer;
+  transition:background 0.2s;
+}
+.btn-save { background:#007bff; color:#fff; }
+.btn-save:hover { background:#0056b3; }
+
+.btn-copy { background:#28a745; color:#fff; }
+.btn-copy:hover { background:#1e7e34; }
+
+.btn-reset { background:#dc3545; color:#fff; }
+.btn-reset:hover { background:#a71d2a; }
 </style>
 
-<div class="cbi-section">
-<h3><%:OC Converter%></h3>
-<div id="status" class="custom-alert" style="display:none;"></div>
+<div class="cbi-section converter-section">
+  <div class="cttl">OC Converter</div>
+  <div id="status" class="custom-alert"></div>
 
-  <div class="cbi-value pxt">
-    <label class="cbi-value-title"><%:Save As Name%>:</label>
-    <div class="cbi-value-field">
-      <input type="text" id="filename" class="cbi-input-text" placeholder="custom">
-    </div>
+  <div class="input-group">
+    <label class="input-label">Save As Name:</label>
+    <input type="text" id="filename" class="input-field" placeholder="custom">
   </div>
 
-  <div class="cbi-value">
-    <label class="cbi-value-title"><%:Paste Config%>:</label>
-    <div class="cbi-value-field">
-      <textarea id="config" class="cbi-input-textarea" rows="6"></textarea>
-    </div>
+  <div class="input-group">
+    <label class="input-label">Paste Config:</label>
+    <textarea id="config" class="full-textarea" rows="6"></textarea>
   </div>
 
-  <div class="cbi-value">
-    <label class="cbi-value-title"><%:Generated YAML%>:</label>
-    <div class="cbi-value-field">
-      <textarea id="yaml" class="cbi-input-textarea" rows="12"></textarea>
-    </div>
+  <div class="input-group">
+    <label class="input-label">Generated YAML:</label>
+    <textarea id="yaml" class="full-textarea" rows="12"></textarea>
   </div>
 
-  <div class="cbi-value">
-    <div class="cbi-value-field">
-      <button class="btn cbi-button cbi-button-save" onclick="saveYAML()"><%:Save%></button>
-    </div>
+  <div class="input-group">
+    <button class="btn btn-save" onclick="saveYAML()">Save</button>
+    <button class="btn btn-copy" onclick="copyYAML()">Copy</button>
+    <button class="btn btn-reset" onclick="resetFields()">Reset</button>
   </div>
-
 </div>
 
 <script>
@@ -100,7 +149,7 @@ function saveYAML() {
     let yaml = document.getElementById('yaml').value.trim();
 
     if (!yaml) {
-        showAlert("<%:No YAML data to save%>", "danger");
+        showAlert("No YAML data to save", "danger");
         return;
     }
 
@@ -111,11 +160,54 @@ function saveYAML() {
     .then(res => res.text())
     .then(resp => {
         if (resp === "OK") {
-            showAlert("<%:YAML saved successfully%>", "success");
+            showAlert("YAML saved successfully", "success");
         } else {
-            showAlert("<%:Failed to save YAML%>", "danger");
+            showAlert("Failed to save YAML", "danger");
         }
     });
+}
+
+function copyYAML() {
+    let yamlField = document.getElementById('yaml');
+    let yaml = yamlField.value.trim();
+
+    if (!yaml) {
+        showAlert("No YAML to copy", "danger");
+        return;
+    }
+
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(yaml).then(() => {
+            showAlert("YAML copied to clipboard", "success");
+        }).catch(() => {
+            fallbackCopy(yamlField);
+        });
+    } else { 
+        fallbackCopy(yamlField);
+    }
+}
+
+function fallbackCopy(el) {
+    el.select();
+    el.setSelectionRange(0, 99999);
+    try {
+        let ok = document.execCommand("copy");
+        if (ok) {
+            showAlert("YAML copied to clipboard", "success");
+        } else {
+            showAlert("Copy failed", "danger");
+        }
+    } catch (err) {
+        showAlert("Copy not supported", "danger");
+    }
+    window.getSelection().removeAllRanges();
+}
+
+function resetFields() {
+    document.getElementById('filename').value = "";
+    document.getElementById('config').value = "";
+    document.getElementById('yaml').value = "";
+    showAlert("Fields reset successfully", "success");
 }
 </script>
 <%+footer%>
