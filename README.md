@@ -1,9 +1,9 @@
 # DOTYWRT
 
 Custom OpenWrt applications, packages, and build scripts maintained under the **dotywrt** project.
----
+ 
 
-Device Model: ARCADYAN AW1000  
+Device : ARCADYAN AW1000  
 Chipset: IPQ8074
 
 
