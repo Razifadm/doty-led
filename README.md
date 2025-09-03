@@ -35,7 +35,7 @@ git clone https://github.com/openwrt/openwrt.git
 cd openwrt
 
 # add dotywrt feed
-echo "src-git dotywrt https://github.com/yourname/dotywrt.git" >> feeds.conf.default
+echo "src-git dotywrt https://github.com/dotywrt/dotycat-package.git" >> feeds.conf.default
 
 # update feeds
 ./scripts/feeds update -a
