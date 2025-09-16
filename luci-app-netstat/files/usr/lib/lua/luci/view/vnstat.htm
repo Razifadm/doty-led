@@ -119,12 +119,30 @@ end
     <% if current_iface ~= "" and #stats > 0 then %>
         <div class="cbi-section">
             <h3><%=title%> <small>(<%=current_iface%>)</small></h3>
-            <canvas id="trafficChart" height="200"></canvas>
+            <div style="width: 100%; height: auto; min-height: 300px;">
+                <canvas id="trafficChart"></canvas>
+            </div>
         </div>
 
         <script src="/luci-static/resources/netstat/chart.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
         <script>
-        const ctx = document.getElementById('trafficChart').getContext('2d');
+        // Detect background brightness for text color
+        function getTextColor() {
+            const bodyColor = window.getComputedStyle(document.body).backgroundColor;
+            if (!bodyColor) return '#000';
+            const rgb = bodyColor.match(/\d+/g).map(Number);
+            const brightness = (rgb[0]*299 + rgb[1]*587 + rgb[2]*114) / 1000;
+            return brightness < 128 ? '#fff' : '#000';
+        }
+        const textColor = getTextColor();
+
+        // Adjust canvas height based on data length
+        const barHeight = 40; // px per bar
+        const chartCanvas = document.getElementById('trafficChart');
+        chartCanvas.height = Math.max(300, <%=#stats%> * barHeight);
+
+        const ctx = chartCanvas.getContext('2d');
         const chart = new Chart(ctx, {
             type: 'bar', 
             data: {
@@ -155,10 +173,26 @@ end
                 ]
             },
             options: {
-                indexAxis: 'y', 
+                indexAxis: 'y',
                 responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'top' },
+                    legend: { 
+                        position: 'top',
+                        labels: { color: textColor }
+                    },
+                    datalabels: {
+                        color: textColor,
+                        anchor: 'end',
+                        align: 'right',
+                        formatter: function(value) {
+                            if (value > 1099511627776) return (value/1099511627776).toFixed(2) + ' TB';
+                            if (value > 1073741824)   return (value/1073741824).toFixed(2) + ' GB';
+                            if (value > 1048576)      return (value/1048576).toFixed(2) + ' MB';
+                            if (value > 1024)         return (value/1024).toFixed(2) + ' KB';
+                            return value + ' B';
+                        }
+                    },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -175,6 +209,7 @@ end
                 scales: {
                     x: { 
                         ticks: {
+                            color: textColor,
                             callback: function(value) {
                                 if (value > 1099511627776) return (value/1099511627776).toFixed(2) + ' TB';
                                 if (value > 1073741824)   return (value/1073741824).toFixed(2) + ' GB';
@@ -182,13 +217,16 @@ end
                                 if (value > 1024)         return (value/1024).toFixed(2) + ' KB';
                                 return value + ' B';
                             }
-                        }
+                        },
+                        title: { display: true, text: 'Usage', color: textColor }
                     },
-                    y: {   
-                        ticks: { autoSkip: false }
+                    y: { 
+                        ticks: { color: textColor, autoSkip: false },
+                        title: { display: true, text: '<%= view_mode == "daily" and "Day" or "Month" %>', color: textColor }
                     }
                 }
-            }
+            },
+            plugins: [ChartDataLabels]
         });
         </script>
     <% else %>
