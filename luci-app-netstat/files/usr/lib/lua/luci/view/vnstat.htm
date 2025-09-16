@@ -119,7 +119,7 @@ end
     <% if current_iface ~= "" and #stats > 0 then %>
         <div class="cbi-section">
             <h3><%=title%> <small>(<%=current_iface%>)</small></h3>
-            <div style="width: 100%; height: auto; min-height: 300px;">
+            <div style="width: 100%; height: auto; min-height: 350px;">
                 <canvas id="trafficChart"></canvas>
             </div>
         </div>
@@ -127,7 +127,7 @@ end
         <script src="/luci-static/resources/netstat/chart.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
         <script>
-        // Detect background brightness for text color
+        // Detect background brightness
         function getTextColor() {
             const bodyColor = window.getComputedStyle(document.body).backgroundColor;
             if (!bodyColor) return '#000';
@@ -137,14 +137,44 @@ end
         }
         const textColor = getTextColor();
 
-        // Adjust canvas height based on data length
-        const barHeight = 40; // px per bar
+        // Dynamic height per row
+        const barHeight = 60; // bigger for mobile
         const chartCanvas = document.getElementById('trafficChart');
-        chartCanvas.height = Math.max(300, <%=#stats%> * barHeight);
-
+        chartCanvas.height = Math.max(350, <%=#stats%> * barHeight);
         const ctx = chartCanvas.getContext('2d');
+
+        // Download gradient (light green → dark green)
+        function getGradient(ctx, value, maxValue) {
+            const gradient = ctx.createLinearGradient(0, 0, chartCanvas.width, 0);
+            gradient.addColorStop(0, '#90ee90'); // light green
+            gradient.addColorStop(1, '#006400'); // dark green
+            return gradient;
+        }
+
+        // Format bytes -> readable
+        function formatBytes(value) {
+            if (value > 1099511627776) return (value/1099511627776).toFixed(2) + ' TB';
+            if (value > 1073741824)   return (value/1073741824).toFixed(2) + ' GB';
+            if (value > 1048576)      return (value/1048576).toFixed(2) + ' MB';
+            if (value > 1024)         return (value/1024).toFixed(2) + ' KB';
+            return value + ' B';
+        }
+
+        // Data arrays
+        const rxData = [
+            <% for _, stat in ipairs(stats) do %>
+                <%= math.floor(stat.rx) %>,
+            <% end %>
+        ];
+        const txData = [
+            <% for _, stat in ipairs(stats) do %>
+                <%= math.floor(stat.tx) %>,
+            <% end %>
+        ];
+        const maxValue = Math.max(...rxData, ...txData, 1);
+
         const chart = new Chart(ctx, {
-            type: 'bar', 
+            type: 'bar',
             data: {
                 labels: [
                     <% for _, stat in ipairs(stats) do %>
@@ -154,21 +184,25 @@ end
                 datasets: [
                     {
                         label: 'Download (RX)',
-                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                        data: [
-                            <% for _, stat in ipairs(stats) do %>
-                                <%= math.floor(stat.rx) %>,
-                            <% end %>
-                        ]
+                        backgroundColor: rxData.map(v => getGradient(ctx, v, maxValue)),
+                        data: rxData,
+                        datalabels: {
+                            color: '#fff',
+                            anchor: 'center',
+                            align: 'center',
+                            formatter: function(value) { return formatBytes(value); }
+                        }
                     },
                     {
                         label: 'Upload (TX)',
-                        backgroundColor: 'rgba(255, 99, 132, 0.7)',
-                        data: [
-                            <% for _, stat in ipairs(stats) do %>
-                                <%= math.floor(stat.tx) %>,
-                            <% end %>
-                        ]
+                        backgroundColor: 'orange',
+                        data: txData,
+                        datalabels: {
+                            color: textColor,
+                            anchor: 'end',
+                            align: 'right',
+                            formatter: function(value) { return formatBytes(value); }
+                        }
                     }
                 ]
             },
@@ -181,48 +215,25 @@ end
                         position: 'top',
                         labels: { color: textColor }
                     },
-                    datalabels: {
-                        color: textColor,
-                        anchor: 'end',
-                        align: 'right',
-                        formatter: function(value) {
-                            if (value > 1099511627776) return (value/1099511627776).toFixed(2) + ' TB';
-                            if (value > 1073741824)   return (value/1073741824).toFixed(2) + ' GB';
-                            if (value > 1048576)      return (value/1048576).toFixed(2) + ' MB';
-                            if (value > 1024)         return (value/1024).toFixed(2) + ' KB';
-                            return value + ' B';
-                        }
-                    },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                let value = context.raw;
-                                if (value > 1099511627776) return (value/1099511627776).toFixed(2) + ' TB';
-                                if (value > 1073741824)   return (value/1073741824).toFixed(2) + ' GB';
-                                if (value > 1048576)      return (value/1048576).toFixed(2) + ' MB';
-                                if (value > 1024)         return (value/1024).toFixed(2) + ' KB';
-                                return value + ' B';
+                                return formatBytes(context.raw);
                             }
                         }
                     }
                 },
                 scales: {
                     x: { 
-                        ticks: {
+                        ticks: { 
                             color: textColor,
                             callback: function(value) {
-                                if (value > 1099511627776) return (value/1099511627776).toFixed(2) + ' TB';
-                                if (value > 1073741824)   return (value/1073741824).toFixed(2) + ' GB';
-                                if (value > 1048576)      return (value/1048576).toFixed(2) + ' MB';
-                                if (value > 1024)         return (value/1024).toFixed(2) + ' KB';
-                                return value + ' B';
+                                return formatBytes(value);
                             }
-                        },
-                        title: { display: true, text: 'Usage', color: textColor }
+                        }
                     },
                     y: { 
-                        ticks: { color: textColor, autoSkip: false },
-                        title: { display: true, text: '<%= view_mode == "daily" and "Day" or "Month" %>', color: textColor }
+                        ticks: { color: textColor, autoSkip: false }
                     }
                 }
             },
