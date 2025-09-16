@@ -119,14 +119,14 @@ end
     <% if current_iface ~= "" and #stats > 0 then %>
         <div class="cbi-section">
             <h3><%=title%> <small>(<%=current_iface%>)</small></h3>
-            <canvas id="trafficChart" height="100"></canvas>
+            <canvas id="trafficChart" height="200"></canvas>
         </div>
 
         <script src="/luci-static/resources/netstat/chart.js"></script>
         <script>
         const ctx = document.getElementById('trafficChart').getContext('2d');
         const chart = new Chart(ctx, {
-            type: 'line',
+            type: 'bar', 
             data: {
                 labels: [
                     <% for _, stat in ipairs(stats) do %>
@@ -136,10 +136,7 @@ end
                 datasets: [
                     {
                         label: 'Download (RX)',
-                        borderColor: 'rgb(54, 162, 235)',
-                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                        tension: 0.4,
-                        fill: true,
+                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
                         data: [
                             <% for _, stat in ipairs(stats) do %>
                                 <%= math.floor(stat.rx) %>,
@@ -148,10 +145,7 @@ end
                     },
                     {
                         label: 'Upload (TX)',
-                        borderColor: 'rgb(255, 99, 132)',
-                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                        tension: 0.4,
-                        fill: true,
+                        backgroundColor: 'rgba(255, 99, 132, 0.7)',
                         data: [
                             <% for _, stat in ipairs(stats) do %>
                                 <%= math.floor(stat.tx) %>,
@@ -161,6 +155,7 @@ end
                 ]
             },
             options: {
+                indexAxis: 'y', 
                 responsive: true,
                 plugins: {
                     legend: { position: 'top' },
@@ -178,7 +173,7 @@ end
                     }
                 },
                 scales: {
-                    y: {
+                    x: { 
                         ticks: {
                             callback: function(value) {
                                 if (value > 1099511627776) return (value/1099511627776).toFixed(2) + ' TB';
@@ -188,6 +183,9 @@ end
                                 return value + ' B';
                             }
                         }
+                    },
+                    y: {   
+                        ticks: { autoSkip: false }
                     }
                 }
             }
