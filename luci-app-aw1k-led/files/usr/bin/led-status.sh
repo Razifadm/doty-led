@@ -84,6 +84,9 @@ set_5g_led_by_snr() {
     echo "5G LED: $best_color (SNR=$SNR)"
 }
 
+---
+# Skrip Utama
+
 #------------------------------------#  KILL ALL 
 for LED in \
     green:signal blue:signal red:signal \
@@ -100,7 +103,7 @@ else
     turn_off_led "green:power"
 fi
 
-#------------------------------------#  MODEM & SNR 
+#------------------------------------#  MODEM & GET INFO 
 COMM=$(uci get modeminfo.settings.comm 2>/dev/null)
 if [ -z "$COMM" ]; then
     echo "Modem: Not Configured"
@@ -110,24 +113,39 @@ fi
 
 MODEM_INFO=$(sms_tool -d "$COMM" at 'AT+CSQ;+QENG="servingcell"')
 
-#------------------------------------#  CSQ & SNR 
+#------------------------------------#  CSQ & SNR (NR5G-SA/NSA Robust Support) 🚀
 CSQ=$(echo "$MODEM_INFO" | grep -i '+CSQ:' | awk -F'[ ,:]+' '{print $2}')
 [ -z "$CSQ" ] && CSQ=0
+SNR=0
+FIELD_NUM=0
 
-QENG_NR5G=$(echo "$MODEM_INFO" | grep 'NR5G-NSA')
-if [ -n "$QENG_NR5G" ]; then
-    NR5G_SINR=$(echo "$QENG_NR5G" | awk -F',' '{print $6}' | tr -d '"')
-    if echo "$NR5G_SINR" | grep -qE '^[0-9]+$'; then
-        SNR=$NR5G_SINR
-    else
-        SNR=0
-    fi
-else
-    SNR=0
+# Pra-pemprosesan data: Gantikan sebarang "koma + ruang" dengan koma tunggal ","
+CLEAN_MODEM_INFO=$(echo "$MODEM_INFO" | sed 's/,[[:space:]]*/,/g')
+
+# Cuba dapatkan maklumat 5G
+QENG_NR5G_SA=$(echo "$CLEAN_MODEM_INFO" | grep 'NR5G-SA')
+QENG_NR5G_NSA=$(echo "$CLEAN_MODEM_INFO" | grep 'NR5G-NSA')
+
+NR5G_SINR=0
+
+if [ -n "$QENG_NR5G_SA" ]; then
+    # Jika NR5G-SA: SINR adalah medan ke-15
+    FIELD_NUM=15
+    # Gunakan -F, untuk mengira medan berdasarkan koma selepas pembersihan
+    NR5G_SINR=$(echo "$QENG_NR5G_SA" | awk -F',' -v fn=$FIELD_NUM '{print $fn}' | tr -d '"')
+elif [ -n "$QENG_NR5G_NSA" ]; then
+    # Jika NR5G-NSA: SINR adalah medan ke-6
+    FIELD_NUM=6
+    NR5G_SINR=$(echo "$QENG_NR5G_NSA" | awk -F',' -v fn=$FIELD_NUM '{print $fn}' | tr -d '"')
+fi
+
+# Set SNR hanya jika nilai yang diekstrak adalah nombor yang sah
+if echo "$NR5G_SINR" | grep -qE '^-?[0-9]+$'; then
+    SNR=$NR5G_SINR
 fi
 
 echo "CSQ = $CSQ"
-echo "SNR = $SNR"
+echo "SNR = $SNR (Medan: $FIELD_NUM)"
 
 #------------------------------------#  PHONE LED 
 if [ "$(uci get 5g-led.station.enable_phone 2>/dev/null)" = "1" ]; then
@@ -151,7 +169,7 @@ fi
 found=0
 for IFACE in wwan0_1 wwan0; do
     if ip link show "$IFACE" >/dev/null 2>&1 && \
-       ip route show dev "$IFACE" | grep -q '^default'; then
+        ip route show dev "$IFACE" | grep -q '^default'; then
         found=1
         break
     fi
