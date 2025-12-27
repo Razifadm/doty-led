@@ -5,24 +5,20 @@ NFT_FILE="$NFT_DIR/ttl64.nft"
 mkdir -p "$NFT_DIR"
 rm -f "$NFT_DIR"/*
 
-
-chmod +x /etc/init.d/nft-custom-ttl
-/etc/init.d/nft-custom-ttl enable
-/etc/init.d/nft-custom-ttl start
-
 {
 cat << 'EOF'
+table inet mangle {
 chain mangle_prerouting_ttl64 {
   type filter hook prerouting priority 300; policy accept;
-  counter ip ttl set 64
+  ip ttl set 64
 }
 chain mangle_postrouting_ttl64 {
   type filter hook postrouting priority 300; policy accept;
-  counter ip ttl set 64
+  ip ttl set 64
 }
 chain mangle_prerouting_hoplimit64 {
   type filter hook prerouting priority 300; policy accept;
-  counter ip6 hoplimit set 64
+  ip6 hoplimit set 64
 EOF
 
 for iface in $(ls /sys/class/net/ | grep '^wwan'); do
@@ -34,7 +30,7 @@ echo "}"
 cat << 'EOF'
 chain mangle_postrouting_hoplimit64 {
   type filter hook postrouting priority 300; policy accept;
-  counter ip6 hoplimit set 64
+  ip6 hoplimit set 64
 EOF
 
 for iface in $(ls /sys/class/net/ | grep '^wwan'); do
@@ -43,6 +39,10 @@ done
 
 echo "}"
 } > "$NFT_FILE"
+
+chmod +x /etc/init.d/nft-custom-ttl
+/etc/init.d/nft-custom-ttl enable
+/etc/init.d/nft-custom-ttl start
 
 /etc/init.d/firewall restart
 
