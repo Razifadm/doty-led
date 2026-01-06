@@ -110,28 +110,20 @@ CSQ=$(echo "$MODEM_INFO" | grep -i '+CSQ:' | awk -F'[ ,:]+' '{print $2}')
 [ -z "$CSQ" ] && CSQ=0
 SNR=0
 FIELD_NUM=0
-
-# Pra-pemprosesan data: Gantikan sebarang "koma + ruang" dengan koma tunggal ","
 CLEAN_MODEM_INFO=$(echo "$MODEM_INFO" | sed 's/,[[:space:]]*/,/g')
-
-# Cuba dapatkan maklumat 5G
 QENG_NR5G_SA=$(echo "$CLEAN_MODEM_INFO" | grep 'NR5G-SA')
 QENG_NR5G_NSA=$(echo "$CLEAN_MODEM_INFO" | grep 'NR5G-NSA')
 
 NR5G_SINR=0
 
 if [ -n "$QENG_NR5G_SA" ]; then
-    # Jika NR5G-SA: SINR adalah medan ke-15
     FIELD_NUM=15
-    # Gunakan -F, untuk mengira medan berdasarkan koma selepas pembersihan
     NR5G_SINR=$(echo "$QENG_NR5G_SA" | awk -F',' -v fn=$FIELD_NUM '{print $fn}' | tr -d '"')
 elif [ -n "$QENG_NR5G_NSA" ]; then
-    # Jika NR5G-NSA: SINR adalah medan ke-6
     FIELD_NUM=6
     NR5G_SINR=$(echo "$QENG_NR5G_NSA" | awk -F',' -v fn=$FIELD_NUM '{print $fn}' | tr -d '"')
 fi
 
-# Set SNR hanya jika nilai yang diekstrak adalah nombor yang sah
 if echo "$NR5G_SINR" | grep -qE '^-?[0-9]+$'; then
     SNR=$NR5G_SINR
 fi
